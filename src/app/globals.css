@@ -1,1 +1,182 @@
 @import "tailwindcss";
+
+@theme {
+  --color-white: #ffffff;
+  --color-rose: #cf8e80;
+  --color-rose-soft: #ebc9c1;
+  --color-burgundy: #4a0d1c;
+  --color-burgundy-deep: #2a0510;
+  --color-pearl: #fbf5f3;
+  --color-ink: #3a0a16;
+  --color-plum: #80525b;
+
+  --font-serif: var(--font-cormorant), "Times New Roman", serif;
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+
+  --animate-marquee: marquee 36s linear infinite;
+  --animate-spin-slow: spin 22s linear infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+/* Hero entrance waits for the intro overlay; a script in <head> marks repeat
+   visits in the same tab with data-intro="seen" so the intro plays once. */
+:root {
+  --hero-delay: 2.3s;
+}
+
+:root[data-intro="seen"] {
+  --hero-delay: 0.15s;
+}
+
+/* The canvas shows during momentum overscroll; darker burgundy matches the
+   header above and the footer below, while the body keeps its white. */
+html {
+  scroll-behavior: smooth;
+  background-color: var(--color-burgundy-deep);
+}
+
+html,
+body {
+  overflow-x: clip;
+}
+
+body {
+  background-color: var(--color-white);
+  color: var(--color-ink);
+}
+
+::selection {
+  background-color: var(--color-rose-soft);
+  color: var(--color-burgundy-deep);
+}
+
+/* Every animated element's resting state is its final state, so with the
+   animations removed (reduced motion) the page is simply fully painted. */
+
+.intro-overlay {
+  pointer-events: none;
+  visibility: hidden;
+  animation: intro-lift 0.75s cubic-bezier(0.7, 0, 0.2, 1) 2.1s both;
+}
+
+:root[data-intro="seen"] .intro-overlay {
+  display: none;
+}
+
+.nail-draw {
+  stroke-dasharray: 1;
+  animation: nail-draw 1s ease-in-out var(--d, 0s) both;
+}
+
+.nail-polish {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: nail-polish 0.7s cubic-bezier(0.6, 0, 0.2, 1) var(--d, 0s) both;
+}
+
+.nail-gloss {
+  animation: nail-gloss 0.6s ease-out var(--d, 0s) both;
+}
+
+.sparkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation:
+    sparkle-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) var(--d, 0s) both,
+    sparkle-twinkle 3.2s ease-in-out calc(var(--d, 0s) + 0.5s) infinite;
+}
+
+.rise {
+  animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0s) both;
+}
+
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation: rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 70%;
+  }
+}
+
+@keyframes intro-lift {
+  from {
+    clip-path: inset(0 0 0 0);
+    visibility: visible;
+  }
+  to {
+    clip-path: inset(0 0 100% 0);
+    visibility: hidden;
+  }
+}
+
+@keyframes nail-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes nail-polish {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes nail-gloss {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes sparkle-pop {
+  from {
+    opacity: 0;
+    transform: scale(0) rotate(-90deg);
+  }
+}
+
+@keyframes sparkle-twinkle {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .intro-overlay {
+    display: none;
+  }
+
+  .nail-draw,
+  .nail-polish,
+  .nail-gloss,
+  .sparkle,
+  .rise,
+  .reveal,
+  .animate-marquee,
+  .animate-spin-slow {
+    animation: none;
+  }
+}
