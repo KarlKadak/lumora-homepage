@@ -1,0 +1,23 @@
+# dependencies
+/node_modules
+/.pnpm-store
+
+# next
+/.next/
+/out/
+
+# misc
+.DS_Store
+
+# debug
+.pnpm-debug.log*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# local vscode settings
+/.vscode/
+
+# machine-specific Claude Code notes
+CLAUDE.local.md

@@ -1,0 +1,56 @@
+{
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "Anthropic.claude-code",
+        "bradlc.vscode-tailwindcss",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "MylesMurphy.prettify-ts",
+        "YoavBls.pretty-ts-errors"
+      ],
+      "settings": {
+        "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+        "[javascriptreact]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "eslint.validate": [
+          "javascript",
+          "javascriptreact",
+          "typescript",
+          "typescriptreact"
+        ],
+        "files.eol": "\n",
+        "git.path": "/usr/bin/git",
+        "prettier.configPath": "./prettier.config.js",
+        "prettier.prettierPath": "./node_modules/prettier",
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.shell.linux": "/bin/bash"
+      }
+    }
+  },
+  "dockerComposeFile": "docker-compose.yml",
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+    "source=~/.gitconfig,target=/home/node/.gitconfig,type=bind,consistency=cached"
+  ],
+  // Published by Docker on the host machine at the port named in
+  // LUMORA_HOMEPAGE_PORT_3000 (see docker-compose.yml). VS Code would otherwise
+  // auto-forward the same container port to localhost:3000 as well, so it is
+  // told to leave it alone.
+  "portsAttributes": { "3000": { "onAutoForward": "ignore" } },
+  "remoteEnv": {
+    "CLAUDE_CODE_AUTO_CONNECT_IDE": "false",
+    "CLAUDE_CONFIG_DIR": "/workspace/.devcontainer/.claude",
+    "EDITOR": "/usr/bin/nano",
+    "NODE_ENV": "development",
+    "VISUAL": "/usr/bin/nano"
+  },
+  "remoteUser": "node",
+  "service": "node",
+  "workspaceFolder": "/workspace"
+}

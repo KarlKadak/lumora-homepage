@@ -1,0 +1,33 @@
+name: lumora-homepage-dev
+services:
+  node:
+    image: node:22.18-bookworm
+    container_name: lumora-homepage-node
+    environment:
+      - TZ=Europe/Tallinn
+      # Interactive bash history lives in the workspace mount so it survives a
+      # container rebuild. history -a appends after every command, since a
+      # rebuild kills the shell before it would write the file on exit.
+      - HISTFILE=/workspace/.devcontainer/.bash_history
+      - PROMPT_COMMAND=history -a
+      # The host-side port number, mirrored into the container so anything in
+      # here can tell you which address actually works on the host machine. It
+      # does not affect what the server binds to; the container side is always
+      # the number on the right of the mapping in `ports:` below.
+      - LUMORA_HOMEPAGE_PORT_3000=${LUMORA_HOMEPAGE_PORT_3000:-3000}
+    command: >
+      /bin/bash -c "
+        apt-get update &&
+        apt-get install -y bash-completion nano &&
+        ln -sf /usr/share/zoneinfo/Europe/Tallinn /etc/localtime &&
+        echo 'Europe/Tallinn' > /etc/timezone &&
+        npm install -g pnpm@latest-10 &&
+        su node -c 'curl -fsSL https://claude.ai/install.sh | bash' &&
+        echo 'export PATH=/home/node/.local/bin:$$PATH' >> /home/node/.bashrc &&
+        tail -f /dev/null
+      "
+    ports:
+      # Loopback only, like VS Code's own forwarding. The host side is
+      # configurable, the container side is not. Set LUMORA_HOMEPAGE_PORT_3000
+      # on the host machine before starting to publish on a different port.
+      - '127.0.0.1:${LUMORA_HOMEPAGE_PORT_3000:-3000}:3000'
