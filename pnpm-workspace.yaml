@@ -3,3 +3,8 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - unrs-resolver
+
+# 8.71.1 flags every used variable in espree-parsed .js files as "only used as a type".
+overrides:
+  '@typescript-eslint/eslint-plugin': 8.71.0
+  '@typescript-eslint/parser': 8.71.0
