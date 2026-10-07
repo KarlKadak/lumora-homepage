@@ -58,7 +58,7 @@ const VIEW = {
 // the wrist itself drops out of view. `zoom` runs from 0 (VIEW) to 1 (this).
 // How far round the fingertip the nail wraps, in degrees either side of the
 // back of the finger.
-const NAIL_WRAP = 64;
+const NAIL_WRAP = 57;
 
 const CLOSE_UP = { scale: 3.17, wrist: [190, 575] as const };
 
@@ -533,7 +533,7 @@ const buildHand = (yaw: number, zoom = 0): Hand => {
   const nailOf = (limb: Limb): NailPose => {
     const bone = limb.last;
     const r = radiusAt(limb, bone.from + bone.length * 0.6) * 0.98;
-    const scaleY = (0.58 * bone.length + 9) / 122;
+    const scaleY = (0.5 * bone.length + 7) / 122;
     // Sits up at the fingertip: the nail's cuticle end starts past the
     // middle of the last bone, and its free edge reaches past the tip.
     const axis = add(
