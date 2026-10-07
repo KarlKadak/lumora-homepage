@@ -24,15 +24,6 @@ const sparklePath = (x: number, y: number, size: number) => {
   return `M${String(x)} ${String(top)}Q${String(x)} ${String(y)} ${String(right)} ${String(y)}Q${String(x)} ${String(y)} ${String(x)} ${String(bottom)}Q${String(x)} ${String(y)} ${String(left)} ${String(y)}Q${String(x)} ${String(y)} ${String(x)} ${String(top)}Z`;
 };
 
-const ChromeGradient = ({ id }: Readonly<{ id: string }>) => (
-  <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stopColor="#fbf5f3" />
-    <stop offset="0.45" stopColor="#ebc9c1" />
-    <stop offset="0.7" stopColor="#cf8e80" />
-    <stop offset="1" stopColor="#fbf5f3" />
-  </linearGradient>
-);
-
 // Full-screen intro: one nail is outlined, brushed with polish from cuticle to
 // tip, catches a glint, then the curtain lifts. Pure CSS, plays once per tab.
 const IntroOverlay = () => (
@@ -157,7 +148,6 @@ const BadgeRing = ({ text }: Readonly<{ text: string }>) => (
 
 export {
   BadgeRing,
-  ChromeGradient,
   CUTICLE,
   delay,
   GLOSS,

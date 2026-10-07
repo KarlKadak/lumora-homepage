@@ -10,33 +10,31 @@ import {
   VIEW,
 } from "@/components/hero-hand";
 import {
-  ChromeGradient,
   CUTICLE,
   delay,
   GLOSS,
   NAIL,
   sparklePath,
 } from "@/components/nail-art";
+import {
+  type Finish,
+  FINISHES,
+  HeroFinishDefs,
+  isGradient,
+} from "@/components/nail-finishes";
 
 // A manicure on a loop: a hand held up in the arch, drawn in outline only,
 // and the brush (which doubles as the bottle cap) lifts out, paints each nail
 // from cuticle to tip along that nail's own direction, returns to the bottle
 // and the next round brings the next shade. Server-rendered as bare nails
 // with the bottle capped; the loop is driven by the Web Animations API once
-// mounted.
+// mounted. The finishes it cycles through live in nail-finishes.tsx.
 
-const SHADES = [
-  "var(--color-rose)",
-  "url(#hero-chrome)",
-  "var(--color-rose-soft)",
-  "var(--color-plum)",
-  "var(--color-pearl)",
-];
-
-const FIRST_SHADE = "var(--color-rose)";
-
-// Gradients cannot transition, so the bottle fades a layer in for them.
-const isGradient = (shade: string) => shade.startsWith("url(");
+const FIRST_FINISH: Finish = FINISHES[0] ?? {
+  name: "rose",
+  paint: "var(--color-rose)",
+};
+const FIRST_SHADE = FIRST_FINISH.paint;
 
 // Fresh polish is uncovered from the cuticle up rather than scaled, so a
 // gradient keeps its angle while it is painted on.
@@ -184,6 +182,7 @@ interface NailParts {
   rim: SVGElement;
   cuticle: SVGElement;
   base: SVGElement;
+  decor: SVGElement;
   fresh: SVGElement;
   gloss: SVGElement;
 }
@@ -241,11 +240,12 @@ const findParts = (svg: SVGSVGElement): SceneParts | undefined => {
       const rim = group && pick(group, "[data-rim]");
       const cuticle = group && pick(group, "[data-cuticle]");
       const base = group && pick(group, "[data-base]");
+      const decor = group && pick(group, "[data-decor]");
       const fresh = group && pick(group, "[data-fresh]");
       const gloss = group && pick(group, "[data-gloss]");
 
-      return frame && rim && cuticle && base && fresh && gloss ?
-          { frame, rim, cuticle, base, fresh, gloss }
+      return frame && rim && cuticle && base && decor && fresh && gloss ?
+          { frame, rim, cuticle, base, decor, fresh, gloss }
         : undefined;
     })
     .filter((nail) => nail !== undefined);
@@ -366,13 +366,36 @@ const spreadBrush = async (scene: Scene, to: number, duration: number) => {
   });
 };
 
+// Lays a finish's decoration over a nail, or clears it. Decor is drawn above
+// the base coat and below the fresh one, so the next coat paints over it.
+const setDecor = (decor: SVGElement, finish: Finish) => {
+  // The previous fade-in still holds the overlay at full opacity, so it is
+  // cancelled before the new design is swapped in, or that would flash.
+  for (const animation of decor.getAnimations()) {
+    animation.cancel();
+  }
+  decor.style.opacity = "0";
+  if (finish.decor) {
+    decor.setAttribute("href", `#hero-decor-${finish.decor}`);
+    decor.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: 450,
+      delay: 120,
+      fill: "forwards",
+    });
+  } else {
+    decor.removeAttribute("href");
+  }
+};
+
 const paintNail = async (
   scene: Scene,
   index: number,
-  { base, fresh, gloss }: NailParts,
-  shade: string,
+  { base, decor, fresh, gloss }: NailParts,
+  finish: Finish,
   approach: number,
 ) => {
+  const shade = finish.paint;
+
   const stroke = 560;
 
   if (index) {
@@ -388,6 +411,7 @@ const paintNail = async (
     spreadBrush(scene, 1, 160),
   ]);
   base.style.fill = shade;
+  setDecor(decor, finish);
   fresh.style.clipPath = COVERED;
   // The bristles gather again as the brush lifts off towards the next nail.
   void spreadBrush(scene, 0, 240);
@@ -418,28 +442,47 @@ const paintNail = async (
   );
 };
 
-const paintRound = async (scene: Scene, shade: string, nextShade: string) => {
-  scene.bristles.style.fill = shade;
+// Gradients cannot transition, so the bottle fades a gradient layer in and
+// out over its plain-coloured liquid.
+const fillBottle = (scene: Scene, finish: Finish) => {
+  if (isGradient(finish.paint)) {
+    scene.liquidGradient.setAttribute("fill", finish.paint);
+    scene.liquidGradient.style.opacity = "1";
+  } else {
+    scene.liquid.style.fill = finish.paint;
+    scene.liquidGradient.style.opacity = "0";
+  }
+};
+
+const paintRound = async (scene: Scene, finish: Finish, next: Finish) => {
+  scene.bristles.style.fill = finish.paint;
   await moveBrush(scene, BRUSH_ABOVE_BOTTLE, 450);
   for (const [index, nail] of scene.nails.entries()) {
-    await paintNail(scene, index, nail, shade, index === 0 ? 580 : 340);
+    await paintNail(scene, index, nail, finish, index === 0 ? 580 : 340);
   }
   // The brush keeps the last nail's mask on its way out, so it passes behind
   // the nearer fingers; it is in the clear once it is back at the bottle.
   await moveBrush(scene, BRUSH_ABOVE_BOTTLE, 620);
   await moveBrush(scene, BRUSH_IN_BOTTLE, 380, easeIn);
   scene.cover.removeAttribute("mask");
-  if (isGradient(nextShade)) {
-    scene.liquidGradient.style.opacity = "1";
-  } else {
-    scene.liquid.style.fill = nextShade;
-    scene.liquidGradient.style.opacity = "0";
-  }
+  fillBottle(scene, next);
   await sleep(1700, scene.signal);
 };
 
+// A random order, so every visit sees the finishes in a fresh sequence.
+const shuffled = <T,>(items: readonly T[]) =>
+  items
+    .map((item) => ({ item, key: Math.random() }))
+    .toSorted((a, b) => a.key - b.key)
+    .map(({ item }) => item);
+
 const runLoop = async (scene: Scene) => {
   startTurning(scene);
+  const order = shuffled(FINISHES);
+
+  // The bottle is server-rendered with the first catalogue shade; it settles
+  // on this visit's first pick while the hand draws in.
+  fillBottle(scene, order[0] ?? FIRST_FINISH);
 
   // Wait for the intro curtain (first visit) and the hand drawing in.
   const introSeen = document.documentElement.dataset.intro === "seen";
@@ -448,10 +491,10 @@ const runLoop = async (scene: Scene) => {
   const state = { round: 0 };
 
   while (!scene.signal.aborted) {
-    const shade = SHADES[state.round % SHADES.length] ?? FIRST_SHADE;
-    const nextShade = SHADES[(state.round + 1) % SHADES.length] ?? FIRST_SHADE;
+    const finish = order[state.round % order.length] ?? FIRST_FINISH;
+    const next = order[(state.round + 1) % order.length] ?? FIRST_FINISH;
 
-    await paintRound(scene, shade, nextShade);
+    await paintRound(scene, finish, next);
     state.round += 1;
   }
 };
@@ -582,7 +625,7 @@ const HeroScene = ({ className }: Readonly<{ className?: string }>) => (
         <stop offset="0" stopColor="#cf8e80" stopOpacity="0.28" />
         <stop offset="1" stopColor="#cf8e80" stopOpacity="0" />
       </radialGradient>
-      <ChromeGradient id="hero-chrome" />
+      <HeroFinishDefs />
     </defs>
 
     <path
@@ -667,6 +710,7 @@ const HeroScene = ({ className }: Readonly<{ className?: string }>) => (
                 height="140"
                 className="fill-pearl/15"
               />
+              <use data-decor style={{ opacity: 0 }} />
               <rect
                 data-fresh
                 x="-30"
@@ -787,7 +831,7 @@ const HeroScene = ({ className }: Readonly<{ className?: string }>) => (
         height="58"
         rx="13"
         strokeWidth="1.5"
-        fill="url(#hero-chrome)"
+        fill="url(#hero-paint-chrome)"
         style={{ opacity: 0, transition: "opacity 0.8s ease" }}
       />
       <path d="M405 452V484" strokeWidth="3" className="stroke-white/45" />
