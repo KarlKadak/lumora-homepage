@@ -26,7 +26,7 @@ interface Picker {
 }
 
 interface Dictionary {
-  meta: { title: string; description: string };
+  meta: { title: string; description: string; ogAlt: string };
   nav: {
     instagram: string;
     time: string;
@@ -72,6 +72,8 @@ interface Dictionary {
   footer: { tagline: string; rights: string };
 }
 
+const SITE_URL = "https://lumorabeauty.ee";
+const SITE_NAME = "Lumora Nail Lounge";
 const EMAIL = "isabel@lumorabeauty.ee";
 const INSTAGRAM_HANDLE = "lumora.nail.lounge";
 const INSTAGRAM_URL = `https://www.instagram.com/${INSTAGRAM_HANDLE}/`;
@@ -80,7 +82,8 @@ const et: Dictionary = {
   meta: {
     title: "Lumora Nail Lounge | Küünesalong Tallinnas",
     description:
-      "Lumora Nail Lounge avab peagi uksed Tallinnas. Maniküür, geellakk, küünepikendused ja küünekunst.",
+      "Uus küünesalong Tallinnas avab peagi uksed. Maniküür, geellakk, küünepikendused, BIAB tugevdus ja küünekunst. Jälgi Instagramis avamisuudiseid.",
+    ogAlt: "Lumora Nail Lounge – uus küünesalong Tallinnas avab peagi uksed",
   },
   nav: {
     instagram: "Instagram",
@@ -234,7 +237,8 @@ const en: Dictionary = {
   meta: {
     title: "Lumora Nail Lounge | Nail salon in Tallinn",
     description:
-      "Lumora Nail Lounge is opening soon in Tallinn. Manicures, gel polish, extensions and nail art.",
+      "A new nail salon opening soon in Tallinn. Manicures, gel polish, extensions, BIAB overlays and nail art. Follow us on Instagram for opening news.",
+    ogAlt: "Lumora Nail Lounge – a new nail salon opening soon in Tallinn",
   },
   nav: {
     instagram: "Instagram",
@@ -380,8 +384,27 @@ const en: Dictionary = {
 
 const dictionaries: Record<Locale, Dictionary> = { et, en };
 
+const LOCALES: readonly Locale[] = ["et", "en"];
+
+// Estonian lives at the root, other languages under their own prefix.
+const localePath = (locale: Locale): string =>
+  locale === "et" ? "/" : `/${locale}/`;
+
+const localeUrl = (locale: Locale): string =>
+  `${SITE_URL}${localePath(locale)}`;
+
 const getDictionary = (locale: Locale): Dictionary => dictionaries[locale];
 
 export type { Dictionary, Locale, PerkKind, Picker, Question };
 
-export { getDictionary, INSTAGRAM_HANDLE, INSTAGRAM_URL };
+export {
+  EMAIL,
+  getDictionary,
+  INSTAGRAM_HANDLE,
+  INSTAGRAM_URL,
+  localePath,
+  LOCALES,
+  localeUrl,
+  SITE_NAME,
+  SITE_URL,
+};

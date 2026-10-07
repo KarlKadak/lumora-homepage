@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import RootDocument from "@/components/root-document";
-import { getDictionary } from "@/content/dictionary";
-
-const { meta } = getDictionary("en");
+import { buildMetadata } from "@/content/metadata";
 
 const EnglishLayout = ({
   children,
@@ -10,7 +8,7 @@ const EnglishLayout = ({
   <RootDocument locale="en">{children}</RootDocument>
 );
 
-const metadata: Metadata = { title: meta.title, description: meta.description };
+const metadata: Metadata = buildMetadata("en");
 
 export { metadata };
 

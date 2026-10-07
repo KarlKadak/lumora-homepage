@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import RootDocument from "@/components/root-document";
-import { getDictionary } from "@/content/dictionary";
-
-const { meta } = getDictionary("et");
+import { buildMetadata } from "@/content/metadata";
 
 const EstonianLayout = ({
   children,
@@ -10,7 +8,7 @@ const EstonianLayout = ({
   <RootDocument locale="et">{children}</RootDocument>
 );
 
-const metadata: Metadata = { title: meta.title, description: meta.description };
+const metadata: Metadata = buildMetadata("et");
 
 export { metadata };
 

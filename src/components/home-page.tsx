@@ -4,9 +4,13 @@ import HeroScene from "@/components/hero-scene";
 import { BadgeRing, delay, LogoMark, NailGlyph } from "@/components/nail-art";
 import type { Dictionary, Locale, PerkKind } from "@/content/dictionary";
 import {
+  EMAIL,
   getDictionary,
   INSTAGRAM_HANDLE,
   INSTAGRAM_URL,
+  localeUrl,
+  SITE_NAME,
+  SITE_URL,
 } from "@/content/dictionary";
 
 const MAP_SOURCE =
@@ -526,11 +530,48 @@ const Footer = ({ footer }: Readonly<{ footer: Dictionary["footer"] }>) => (
   </footer>
 );
 
+// schema.org description of the salon for search engines. The street address
+// and opening hours join once they are known; "Tallinn" is enough for local
+// results until then. "<" is escaped so the JSON can never close the script.
+const LocalBusinessSchema = ({
+  locale,
+  meta,
+}: Readonly<{ locale: Locale; meta: Dictionary["meta"] }>) => {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "NailSalon",
+    "@id": `${SITE_URL}/#salon`,
+    name: SITE_NAME,
+    url: localeUrl(locale),
+    description: meta.description,
+    image: `${SITE_URL}/og-${locale}.png`,
+    logo: `${SITE_URL}/icon.svg`,
+    email: EMAIL,
+    sameAs: [INSTAGRAM_URL],
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "Tallinn",
+      addressCountry: "EE",
+    },
+    areaServed: { "@type": "City", name: "Tallinn" },
+    inLanguage: locale,
+  };
+  const json = JSON.stringify(schema).replaceAll("<", "\\u003c");
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: json }}
+    />
+  );
+};
+
 const HomePage = ({ locale }: Readonly<{ locale: Locale }>) => {
   const dictionary = getDictionary(locale);
 
   return (
     <>
+      <LocalBusinessSchema locale={locale} meta={dictionary.meta} />
       <Header locale={locale} nav={dictionary.nav} />
       <main className="flex-1">
         <Hero hero={dictionary.hero} />
