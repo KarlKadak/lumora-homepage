@@ -92,8 +92,8 @@ const onNail =
 const pose = ({ x, y, angle }: Pose) =>
   `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${angle.toFixed(1)}deg) scale(0.9)`;
 
-const BRUSH_IN_BOTTLE = atBottle(425, 490, 0);
-const BRUSH_ABOVE_BOTTLE = atBottle(425, 382, -12);
+const BRUSH_IN_BOTTLE = atBottle(425, 450, 0);
+const BRUSH_ABOVE_BOTTLE = atBottle(425, 342, -12);
 const BRUSH_HOME = pose(BRUSH_IN_BOTTLE(HAND));
 
 // The bristle head, tip at the origin and ferrule at y = -26. It is drawn
@@ -210,6 +210,10 @@ interface SceneParts {
   popCover: SVGElement;
   liquid: SVGElement;
   liquidGradient: SVGElement;
+  // The next finish's design, shown in the bottle so the pot matches the
+  // nails it will paint.
+  // Two layers that take turns, so one design cross-fades into the next.
+  liquidDecor: readonly [SVGElement, SVGElement];
 }
 
 // What the loop should be doing: dealing finishes at random, or holding the
@@ -241,6 +245,9 @@ interface Scene extends SceneParts {
   cursor: { at: PoseAt; now: Pose };
   // How far the bristles are currently splayed, 0 gathered to 1 pressed.
   spread: { current: number };
+  // How far the hand is zoomed in, 0 for the loop's framing to 1 for the
+  // close-up on a chosen finish.
+  zoom: { current: number; target: number };
   director: Director;
 }
 
@@ -286,6 +293,13 @@ const findParts = (svg: SVGSVGElement): SceneParts | undefined => {
   const hairs = pick(svg, "[data-hairs]");
   const liquid = pick(svg, "[data-liquid]");
   const liquidGradient = pick(svg, "[data-liquid-gradient]");
+  const liquidDecor = [
+    ...svg.querySelectorAll<SVGElement>("[data-liquid-decor]"),
+  ];
+  const liquidDecorPair =
+    liquidDecor[0] && liquidDecor[1] ?
+      ([liquidDecor[0], liquidDecor[1]] as const)
+    : undefined;
   const pop = pick(svg, "[data-pop]");
   const popCover = pick(svg, "[data-pop-cover]");
 
@@ -297,6 +311,7 @@ const findParts = (svg: SVGSVGElement): SceneParts | undefined => {
         hairs &&
         liquid &&
         liquidGradient &&
+        liquidDecorPair &&
         pop &&
         popCover &&
         layers.length === HAND.layers.length &&
@@ -314,6 +329,7 @@ const findParts = (svg: SVGSVGElement): SceneParts | undefined => {
         hairs,
         liquid,
         liquidGradient,
+        liquidDecor: liquidDecorPair,
         pop,
         popCover,
       }
@@ -358,7 +374,7 @@ const startTurning = (scene: Scene) => {
       VIEW.yaw +
       TURN.amplitude * Math.sin(((now - start) / TURN.period) * 2 * Math.PI);
 
-    scene.hand.current = buildHand(yaw);
+    scene.hand.current = buildHand(yaw, scene.zoom.current);
     applyHand(scene, scene.hand.current);
     requestAnimationFrame(frame);
   };
@@ -480,7 +496,7 @@ const paintNail = async (
 // Gradients cannot transition, so the bottle fades a gradient layer in and
 // out over its plain-coloured liquid.
 const fillBottle = (
-  scene: Pick<SceneParts, "liquid" | "liquidGradient">,
+  scene: Pick<SceneParts, "liquid" | "liquidGradient" | "liquidDecor">,
   finish: Finish,
 ) => {
   if (isGradient(finish.paint)) {
@@ -490,6 +506,20 @@ const fillBottle = (
     scene.liquid.style.fill = finish.paint;
     scene.liquidGradient.style.opacity = "0";
   }
+  // The design goes on whichever layer is hidden and fades in over the
+  // other, which fades out; swapping a visible layer's href would be abrupt.
+  const [a, b] = scene.liquidDecor;
+  const showing = a.style.opacity === "1" ? a : b;
+  const hidden = showing === a ? b : a;
+
+  if (finish.decor) {
+    const href = `#hero-decor-${finish.decor}`;
+
+    if (showing.getAttribute("href") === href) return;
+    hidden.setAttribute("href", href);
+    hidden.style.opacity = "1";
+  }
+  showing.style.opacity = "0";
 };
 
 const paintRound = async (scene: Scene, finish: Finish, next: Finish) => {
@@ -521,6 +551,20 @@ const paintAtOnce = (parts: SceneParts, finish: Finish) => {
     setDecor(nail.decor, finish);
     nail.gloss.style.opacity = "0.75";
   }
+};
+
+// Glides the hand between the loop's framing and the close-up. Runs on the
+// master signal, so a pick mid-zoom does not cut it short.
+const zoomTo = async (scene: Scene, to: number) => {
+  const from = scene.zoom.current;
+
+  if (scene.zoom.target === to) return;
+  scene.zoom.target = to;
+  await tween(1400, inOut, scene.master, (progress) => {
+    // A newer zoom takes over if the visitor changes their mind mid-glide.
+    if (scene.zoom.target !== to) return;
+    scene.zoom.current = from + (to - from) * progress;
+  });
 };
 
 // After a round is cut short: any half-finished coat is wiped, the bristles
@@ -573,6 +617,8 @@ const runRound = async (scene: Scene) => {
     fillBottle(scene, request);
     await sleep(700, round.signal);
   }
+  // The close-up is for a chosen finish; the loop plays zoomed out.
+  void zoomTo(scene, director.mode === "picked" ? 1 : 0);
   const next =
     director.mode === "random" ?
       (director.order[(director.index + 1) % director.order.length] ?? finish)
@@ -660,6 +706,7 @@ const startScene = (
     hand: { current: HAND },
     cursor: { at: BRUSH_IN_BOTTLE, now: BRUSH_IN_BOTTLE(HAND) },
     spread: { current: 0 },
+    zoom: { current: 0, target: 0 },
     director: {
       mode: "random",
       request: undefined,
@@ -691,9 +738,18 @@ const startScene = (
 // button can sit over it.
 const BOTTLE_AREA = {
   left: "84%",
-  top: "84.8%",
+  top: "76.8%",
   width: "12.8%",
-  height: "15%",
+  height: "22.8%",
+};
+
+const swatchButton =
+  "relative flex w-full cursor-pointer flex-col items-center gap-2 rounded-2xl p-2 pt-3 transition-colors hover:bg-white focus-visible:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose";
+
+// The random option's tile: a nail in every colour at once.
+const RANDOM_SWATCH: Finish = {
+  name: "random",
+  paint: "url(#hero-paint-holo)",
 };
 
 const PickerDialog = ({
@@ -740,6 +796,32 @@ const PickerDialog = ({
         </button>
       </div>
       <ul className="mt-6 grid grid-cols-4 gap-2 sm:grid-cols-6 sm:gap-3">
+        <li>
+          <button
+            type="button"
+            onClick={() => {
+              onRandom();
+              close();
+            }}
+            className={swatchButton}
+          >
+            <span className="relative">
+              <FinishSwatch
+                finish={RANDOM_SWATCH}
+                className="h-16 text-burgundy"
+              />
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 flex items-center justify-center pt-3 font-serif text-2xl font-medium text-burgundy-deep italic"
+              >
+                ?
+              </span>
+            </span>
+            <span className="text-center text-[0.65rem] leading-tight font-semibold tracking-wide">
+              {picker.random}
+            </span>
+          </button>
+        </li>
         {FINISHES.map((finish) => (
           <li key={finish.name}>
             <button
@@ -748,7 +830,7 @@ const PickerDialog = ({
                 onPick(finish);
                 close();
               }}
-              className="relative flex w-full cursor-pointer flex-col items-center gap-2 rounded-2xl p-2 pt-3 transition-colors hover:bg-white focus-visible:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose"
+              className={swatchButton}
             >
               <FinishSwatch finish={finish} className="h-16 text-burgundy" />
               <span className="text-center text-[0.65rem] leading-tight font-semibold tracking-wide">
@@ -763,18 +845,6 @@ const PickerDialog = ({
           </li>
         ))}
       </ul>
-      <div className="mt-6 flex justify-end">
-        <button
-          type="button"
-          onClick={() => {
-            onRandom();
-            close();
-          }}
-          className="inline-flex cursor-pointer items-center justify-center rounded-full bg-rose px-6 py-3 text-sm font-semibold tracking-wide text-burgundy-deep transition-colors hover:bg-rose-soft focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rose"
-        >
-          {picker.random}
-        </button>
-      </div>
     </dialog>
   );
 };
@@ -858,6 +928,9 @@ const HeroDrawing = ({
       </clipPath>
       <clipPath id="hero-nail-clip">
         <path d={NAIL} />
+      </clipPath>
+      <clipPath id="hero-bottle-clip">
+        <rect x="395" y="400" width="60" height="98" rx="13" />
       </clipPath>
       {/* Each digit's silhouette, and the masks that hide behind the nails
           and the digits nearer than a given one: mask n is for the nth
@@ -1118,11 +1191,12 @@ const HeroDrawing = ({
       </g>
     </g>
 
-    {/* The bottle, drawn over the brush so it hides the bristles when capped. */}
+    {/* The bottle, drawn over the brush so it hides the bristles when capped.
+        It is tall enough to show the next finish's design at full size. */}
     <g className="rise" style={delay(0.9)}>
       <rect
         x="416"
-        y="424"
+        y="384"
         width="18"
         height="18"
         rx="3"
@@ -1132,9 +1206,9 @@ const HeroDrawing = ({
       <rect
         data-liquid
         x="395"
-        y="440"
+        y="400"
         width="60"
-        height="58"
+        height="98"
         rx="13"
         strokeWidth="1.5"
         style={{ fill: FIRST_SHADE, transition: "fill 0.8s ease" }}
@@ -1142,17 +1216,36 @@ const HeroDrawing = ({
       <rect
         data-liquid-gradient
         x="395"
-        y="440"
+        y="400"
         width="60"
-        height="58"
+        height="98"
         rx="13"
         strokeWidth="1.5"
         fill="url(#hero-paint-chrome)"
         style={{ opacity: 0, transition: "opacity 0.8s ease" }}
       />
-      <path d="M405 452V484" strokeWidth="3" className="stroke-white/45" />
+      <g clipPath="url(#hero-bottle-clip)" stroke="none">
+        <use
+          data-liquid-decor
+          href={
+            FIRST_FINISH.decor ? `#hero-decor-${FIRST_FINISH.decor}` : undefined
+          }
+          transform="translate(425 450)"
+          style={{
+            opacity: FIRST_FINISH.decor ? 1 : 0,
+            transition: "opacity 0.8s ease",
+          }}
+        />
+        <use
+          data-liquid-decor
+          transform="translate(425 450)"
+          style={{ opacity: 0, transition: "opacity 0.8s ease" }}
+        />
+      </g>
+      <rect x="395" y="400" width="60" height="98" rx="13" strokeWidth="1.5" />
+      <path d="M405 416V482" strokeWidth="3" className="stroke-white/45" />
       <path
-        d={sparklePath(428, 469, 6)}
+        d={sparklePath(443, 414, 6)}
         stroke="none"
         className="fill-white/70"
       />

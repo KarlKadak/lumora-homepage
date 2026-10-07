@@ -54,6 +54,10 @@ const VIEW = {
   wrist: [186, 410] as const,
 };
 
+// The close-up, for admiring a chosen finish: the hand fills the arch and
+// the wrist itself drops out of view. `zoom` runs from 0 (VIEW) to 1 (this).
+const CLOSE_UP = { scale: 3.17, wrist: [190, 575] as const };
+
 interface Screen {
   x: number;
   y: number;
@@ -306,7 +310,14 @@ interface Hand {
 
 // Projects the hand at the given yaw. The hand turns slowly in the hero, so
 // this runs every frame: everything in here is a function of the view.
-const buildHand = (yaw: number): Hand => {
+const buildHand = (yaw: number, zoom = 0): Hand => {
+  const mix = (from: number, to: number) => from + (to - from) * zoom;
+  const scaleBy = mix(VIEW.scale, CLOSE_UP.scale);
+  const wrist = [
+    mix(VIEW.wrist[0], CLOSE_UP.wrist[0]),
+    mix(VIEW.wrist[1], CLOSE_UP.wrist[1]),
+  ] as const;
+
   // Orthographic projection into the arch. The forearm is projected without the
   // wrist extension, which only bends the hand.
   const project = (point: Vec3, hand = true): Screen => {
@@ -321,8 +332,8 @@ const buildHand = (yaw: number): Hand => {
 
     // Screen y runs down, then the arm is rolled clockwise.
     return {
-      x: VIEW.wrist[0] + VIEW.scale * (x * cos + y * sin),
-      y: VIEW.wrist[1] + VIEW.scale * (x * sin - y * cos),
+      x: wrist[0] + scaleBy * (x * cos + y * sin),
+      y: wrist[1] + scaleBy * (x * sin - y * cos),
       depth,
     };
   };
@@ -353,7 +364,7 @@ const buildHand = (yaw: number): Hand => {
   const edgePoint = (limb: Limb, side: 1 | -1, s: number): Vec2 => {
     const point = screenAt(limb, s);
     const [tx, ty] = tangentAt(limb, s);
-    const r = radiusAt(limb, s) * VIEW.scale;
+    const r = radiusAt(limb, s) * scaleBy;
 
     return [point.x - side * ty * r, point.y + side * tx * r];
   };
@@ -370,7 +381,7 @@ const buildHand = (yaw: number): Hand => {
   const cap = (limb: Limb) => {
     const point = screenAt(limb, limb.length);
     const [tx, ty] = tangentAt(limb, limb.length);
-    const r = radiusAt(limb, limb.length) * VIEW.scale;
+    const r = radiusAt(limb, limb.length) * scaleBy;
 
     return [-60, -30, 0, 30, 60].map((degrees): Vec2 => {
       const sin = Math.sin(degrees * DEG);
@@ -427,7 +438,7 @@ const buildHand = (yaw: number): Hand => {
     const start = edgePoint(left, 1, left.digit.starts[1]);
     const end = edgePoint(right, -1, right.digit.starts[0]);
     const [tx, ty] = tangentAt(right, right.digit.starts[0]);
-    const dip = 5 * VIEW.scale;
+    const dip = 5 * scaleBy;
     const middle: Vec2 = [
       (start[0] + end[0]) / 2 - tx * dip,
       (start[1] + end[1]) / 2 - ty * dip,
@@ -478,7 +489,7 @@ const buildHand = (yaw: number): Hand => {
     const away = Math.hypot(start[0] - previous[0], start[1] - previous[1]);
     const end = edgePoint(pinky, 1, PALM);
     const [tx, ty] = tangentAt(pinky, PALM);
-    const reach = 24 * VIEW.scale;
+    const reach = 24 * scaleBy;
     const leave: Vec2 = [
       start[0] + ((start[0] - previous[0]) / away) * reach,
       start[1] + ((start[1] - previous[1]) / away) * reach,
