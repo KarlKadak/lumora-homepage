@@ -13,6 +13,18 @@ interface Question {
   answer: string;
 }
 
+// The colour picker behind the hero's polish bottle. Finish names are keyed
+// by the catalogue names in nail-finishes.tsx.
+interface Picker {
+  hint: string;
+  title: string;
+  text: string;
+  random: string;
+  close: string;
+  newLabel: string;
+  names: Record<string, string>;
+}
+
 interface Dictionary {
   meta: { title: string; description: string };
   nav: {
@@ -31,6 +43,7 @@ interface Dictionary {
     lead: string;
     primary: string;
     secondary: string;
+    picker: Picker;
   };
   marquee: string[];
   intro: { eyebrow: string; title: string; text: string; highlights: string[] };
@@ -85,6 +98,46 @@ const et: Dictionary = {
     lead: "Maniküür, geellakk, küünepikendused ja küünekunst. Avamise kuupäeva anname teada Instagramis.",
     primary: "Võta ühendust",
     secondary: "Jälgi Instagramis",
+    picker: {
+      hint: "Klõpsa pudelil ja vali värv",
+      title: "Vali värv",
+      text: "Küüned maalitakse sinu valitud tooniga. Juhuslik valik laseb pintslil ise edasi toimetada.",
+      random: "Juhuslik",
+      close: "Sulge",
+      newLabel: "Uus",
+      names: {
+        halloween: "Halloween",
+        "halloween-night": "Halloweeni öö",
+        rose: "Roos",
+        chrome: "Kroom",
+        french: "Prantsuse",
+        cherry: "Kirss",
+        glitter: "Sädelus",
+        sunset: "Loojang",
+        polka: "Täpid",
+        nude: "Nude",
+        ombre: "Ombré",
+        winter: "Talv",
+        ink: "Tint",
+        "cat-eye": "Kassisilm",
+        leopard: "Leopard",
+        lavender: "Lavendel",
+        candy: "Komm",
+        marble: "Marmor",
+        sage: "Salvei",
+        valentine: "Valentin",
+        aurora: "Virmalised",
+        "half-moon": "Poolkuu",
+        "rose-soft": "Õrn roos",
+        galaxy: "Galaktika",
+        "gold-foil": "Kuldleht",
+        holo: "Holo",
+        festive: "Jõulud",
+        ocean: "Ookean",
+        stripes: "Triibud",
+        pearl: "Pärl",
+      },
+    },
   },
   marquee: [
     "Maniküür",
@@ -199,6 +252,46 @@ const en: Dictionary = {
     lead: "Manicures, gel polish, extensions and nail art. We will announce the opening date on Instagram.",
     primary: "Get in touch",
     secondary: "Follow on Instagram",
+    picker: {
+      hint: "Click the bottle to pick a colour",
+      title: "Pick a colour",
+      text: "The nails are painted in the shade you choose. Random lets the brush carry on by itself.",
+      random: "Random",
+      close: "Close",
+      newLabel: "New",
+      names: {
+        halloween: "Halloween",
+        "halloween-night": "Halloween night",
+        rose: "Rose",
+        chrome: "Chrome",
+        french: "French tip",
+        cherry: "Cherry",
+        glitter: "Glitter",
+        sunset: "Sunset",
+        polka: "Polka dots",
+        nude: "Nude",
+        ombre: "Ombré",
+        winter: "Winter",
+        ink: "Ink",
+        "cat-eye": "Cat eye",
+        leopard: "Leopard",
+        lavender: "Lavender",
+        candy: "Candy",
+        marble: "Marble",
+        sage: "Sage",
+        valentine: "Valentine",
+        aurora: "Aurora",
+        "half-moon": "Half moon",
+        "rose-soft": "Soft rose",
+        galaxy: "Galaxy",
+        "gold-foil": "Gold foil",
+        holo: "Holo",
+        festive: "Festive",
+        ocean: "Ocean",
+        stripes: "Stripes",
+        pearl: "Pearl",
+      },
+    },
   },
   marquee: ["Manicure", "Gel polish", "Extensions", "BIAB overlay", "Nail art"],
   intro: {
@@ -289,6 +382,6 @@ const dictionaries: Record<Locale, Dictionary> = { et, en };
 
 const getDictionary = (locale: Locale): Dictionary => dictionaries[locale];
 
-export type { Dictionary, Locale, PerkKind, Question };
+export type { Dictionary, Locale, PerkKind, Picker, Question };
 
 export { getDictionary, INSTAGRAM_HANDLE, INSTAGRAM_URL };

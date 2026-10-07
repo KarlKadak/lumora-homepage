@@ -153,7 +153,7 @@ const Hero = ({ hero }: Readonly<{ hero: Dictionary["hero"] }>) => (
       </div>
 
       <div className="relative mx-auto w-[min(84vw,24rem)] md:row-span-2 md:w-full md:max-w-lg md:self-center">
-        <HeroScene className="block w-full text-rose" />
+        <HeroScene className="w-full text-rose" picker={hero.picker} />
         <div
           className="rise absolute -bottom-7 -left-5 size-24 rounded-full bg-rose p-1.5 shadow-xl shadow-burgundy-deep/50 sm:size-28"
           style={delay(1.6)}

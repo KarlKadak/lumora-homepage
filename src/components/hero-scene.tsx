@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useId, useRef, useState } from "react";
 import {
   buildHand,
   HAND,
@@ -19,9 +20,11 @@ import {
 import {
   type Finish,
   FINISHES,
+  FinishSwatch,
   HeroFinishDefs,
   isGradient,
 } from "@/components/nail-finishes";
+import type { Picker } from "@/content/dictionary";
 
 // A manicure on a loop: a hand held up in the arch, drawn in outline only,
 // and the brush (which doubles as the bottle cap) lifts out, paints each nail
@@ -209,14 +212,36 @@ interface SceneParts {
   liquidGradient: SVGElement;
 }
 
+// What the loop should be doing: dealing finishes at random, or holding the
+// visitor's pick. A pick or a restart interrupts the round in progress.
+interface Director {
+  mode: "random" | "picked";
+  // A finish the visitor asked for, painted next.
+  request: Finish | undefined;
+  // The order dealt for random mode and how far along it the loop is.
+  order: readonly Finish[];
+  index: number;
+  // Aborts the round in progress.
+  round: AbortController;
+  // Rouses the loop when it is idle in picked mode.
+  wake: () => void;
+  // The last round was cut short, so the brush must be brought home first.
+  dirty: boolean;
+}
+
 interface Scene extends SceneParts {
+  // Lives until unmount.
+  master: AbortSignal;
+  // Lives for one round; a pick cuts it short.
   signal: AbortSignal;
   // The hand as currently projected, updated every frame while the loop runs.
   hand: { current: Hand };
-  // Where the brush was last sent, so the next move can start from there.
-  cursor: { at: PoseAt };
+  // Where the brush was last sent, so the next move can start from there,
+  // and where it actually is, for picking up after an interrupted move.
+  cursor: { at: PoseAt; now: Pose };
   // How far the bristles are currently splayed, 0 gathered to 1 pressed.
   spread: { current: number };
+  director: Director;
 }
 
 const findParts = (svg: SVGSVGElement): SceneParts | undefined => {
@@ -328,7 +353,7 @@ const applyHand = (parts: SceneParts, hand: Hand) => {
 const startTurning = (scene: Scene) => {
   const start = performance.now();
   const frame = (now: number) => {
-    if (scene.signal.aborted) return;
+    if (scene.master.aborted) return;
     const yaw =
       VIEW.yaw +
       TURN.amplitude * Math.sin(((now - start) / TURN.period) * 2 * Math.PI);
@@ -355,11 +380,12 @@ const moveBrush = async (
     const b = to(scene.hand.current);
     const mix = (p: number, q: number) => p + (q - p) * progress;
 
-    scene.brush.style.transform = pose({
+    scene.cursor.now = {
       x: mix(a.x, b.x),
       y: mix(a.y, b.y),
       angle: mix(a.angle, b.angle),
-    });
+    };
+    scene.brush.style.transform = pose(scene.cursor.now);
   });
 };
 
@@ -453,7 +479,10 @@ const paintNail = async (
 
 // Gradients cannot transition, so the bottle fades a gradient layer in and
 // out over its plain-coloured liquid.
-const fillBottle = (scene: Scene, finish: Finish) => {
+const fillBottle = (
+  scene: Pick<SceneParts, "liquid" | "liquidGradient">,
+  finish: Finish,
+) => {
   if (isGradient(finish.paint)) {
     scene.liquidGradient.setAttribute("fill", finish.paint);
     scene.liquidGradient.style.opacity = "1";
@@ -485,73 +514,342 @@ const shuffled = <T,>(items: readonly T[]) =>
     .toSorted((a, b) => a.key - b.key)
     .map(({ item }) => item);
 
+// Paints a finish straight on, for visitors who prefer reduced motion.
+const paintAtOnce = (parts: SceneParts, finish: Finish) => {
+  for (const nail of parts.nails) {
+    nail.base.style.fill = finish.paint;
+    setDecor(nail.decor, finish);
+    nail.gloss.style.opacity = "0.75";
+  }
+};
+
+// After a round is cut short: any half-finished coat is wiped, the bristles
+// gather, and the brush goes back to the bottle from wherever it was.
+const recover = async (scene: Scene) => {
+  for (const nail of scene.nails) {
+    for (const animation of nail.fresh.getAnimations()) {
+      animation.cancel();
+    }
+    nail.fresh.style.clipPath = COVERED;
+  }
+  scene.spread.current = 0;
+  scene.bristles.setAttribute("d", BRISTLES_GATHERED.head);
+  scene.hairs.setAttribute("d", BRISTLES_GATHERED.hairs);
+  const here = scene.cursor.now;
+
+  scene.cursor.at = () => here;
+  await moveBrush(scene, BRUSH_ABOVE_BOTTLE, 500);
+  await moveBrush(scene, BRUSH_IN_BOTTLE, 300, easeIn);
+  scene.cover.removeAttribute("mask");
+};
+
+// One pass of the loop: whatever the director asks for, painted, or an idle
+// wait when there is nothing to do.
+const runRound = async (scene: Scene) => {
+  const { director } = scene;
+  const round = new AbortController();
+
+  director.round = round;
+  scene.signal = round.signal;
+  if (director.dirty) {
+    director.dirty = false;
+    await recover(scene);
+  }
+  const request = director.request;
+  const dealt =
+    director.mode === "random" ?
+      director.order[director.index % director.order.length]
+    : undefined;
+  const finish = request ?? dealt;
+
+  director.request = undefined;
+  if (!finish) {
+    await new Promise<void>((resolve) => {
+      director.wake = resolve;
+    });
+    return;
+  }
+  if (request) {
+    fillBottle(scene, request);
+    await sleep(700, round.signal);
+  }
+  const next =
+    director.mode === "random" ?
+      (director.order[(director.index + 1) % director.order.length] ?? finish)
+    : finish;
+
+  await paintRound(scene, finish, next);
+  if (!request && director.mode === "random") director.index += 1;
+};
+
 const runLoop = async (scene: Scene) => {
   startTurning(scene);
-  const order = shuffled(FINISHES);
-
-  // The bottle is server-rendered with the first catalogue shade; it settles
-  // on this visit's first pick while the hand draws in.
-  fillBottle(scene, order[0] ?? FIRST_FINISH);
 
   // Wait for the intro curtain (first visit) and the hand drawing in.
   const introSeen = document.documentElement.dataset.intro === "seen";
 
-  await sleep(introSeen ? 2800 : 5000, scene.signal);
-  const state = { round: 0 };
+  await sleep(introSeen ? 2800 : 5000, scene.signal).catch(() => undefined);
 
-  while (!scene.signal.aborted) {
-    const finish = order[state.round % order.length] ?? FIRST_FINISH;
-    const next = order[(state.round + 1) % order.length] ?? FIRST_FINISH;
-
-    await paintRound(scene, finish, next);
-    state.round += 1;
+  while (!scene.master.aborted) {
+    try {
+      await runRound(scene);
+    } catch {
+      // Cut short by a pick or a restart (or by unmounting, which ends the
+      // loop before the flag matters).
+      scene.director.dirty = true;
+    }
   }
 };
 
-// Ref callback with cleanup (React 19): starts the loop on mount, stops it on
-// unmount. Reduced-motion visitors get the nails painted, without the loop
-// or the turning.
-const startScene = (svg: SVGSVGElement | null) => {
-  const parts = svg ? findParts(svg) : undefined;
+// What the picker can ask of a running scene.
+interface SceneControl {
+  pick: (finish: Finish) => void;
+  random: () => void;
+}
 
-  if (!svg || !parts) return;
+const control = (scene: Scene): SceneControl => ({
+  pick: (finish) => {
+    scene.director.mode = "picked";
+    scene.director.request = finish;
+    scene.director.round.abort();
+    scene.director.wake();
+  },
+  random: () => {
+    scene.director.mode = "random";
+    scene.director.request = undefined;
+    scene.director.order = shuffled(FINISHES);
+    scene.director.index = 0;
+    scene.director.round.abort();
+    scene.director.wake();
+  },
+});
+
+// Starts the loop on mount and stops it on unmount; hands back the controls
+// for the picker. Reduced-motion visitors get the nails painted, without the
+// loop or the turning, and a pick is painted straight on.
+const startScene = (
+  svg: SVGSVGElement,
+): [SceneControl, () => void] | undefined => {
+  const parts = findParts(svg);
+
+  if (!parts) return;
 
   if (globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    for (const nail of parts.nails) {
-      nail.base.style.fill = FIRST_SHADE;
-      nail.gloss.style.opacity = "0.75";
-    }
-    return;
+    paintAtOnce(parts, FIRST_FINISH);
+    return [
+      {
+        pick: (finish) => {
+          paintAtOnce(parts, finish);
+          fillBottle(parts, finish);
+        },
+        random: () => {
+          paintAtOnce(parts, FIRST_FINISH);
+          fillBottle(parts, FIRST_FINISH);
+        },
+      },
+      () => undefined,
+    ];
   }
 
   const controller = new AbortController();
+  const round = new AbortController();
   const scene: Scene = {
     ...parts,
-    signal: controller.signal,
+    master: controller.signal,
+    signal: round.signal,
     hand: { current: HAND },
-    cursor: { at: BRUSH_IN_BOTTLE },
+    cursor: { at: BRUSH_IN_BOTTLE, now: BRUSH_IN_BOTTLE(HAND) },
     spread: { current: 0 },
+    director: {
+      mode: "random",
+      request: undefined,
+      // The opening finish always comes first; the rest are dealt at random.
+      order: [FIRST_FINISH, ...shuffled(FINISHES.slice(1))],
+      index: 0,
+      round,
+      wake: () => undefined,
+      dirty: false,
+    },
   };
 
   runLoop(scene).catch(() => undefined);
 
-  return () => {
-    controller.abort();
-    for (const animation of svg.getAnimations({ subtree: true })) {
-      animation.cancel();
-    }
-  };
+  return [
+    control(scene),
+    () => {
+      controller.abort();
+      scene.director.round.abort();
+      scene.director.wake();
+      for (const animation of svg.getAnimations({ subtree: true })) {
+        animation.cancel();
+      }
+    },
+  ];
 };
 
-const HeroScene = ({ className }: Readonly<{ className?: string }>) => (
+// The bottle's place in the drawing, as fractions of the viewBox, so an HTML
+// button can sit over it.
+const BOTTLE_AREA = {
+  left: "84%",
+  top: "84.8%",
+  width: "12.8%",
+  height: "15%",
+};
+
+const PickerDialog = ({
+  picker,
+  dialogRef,
+  onPick,
+  onRandom,
+}: Readonly<{
+  picker: Picker;
+  dialogRef: React.RefObject<HTMLDialogElement | null>;
+  onPick: (finish: Finish) => void;
+  onRandom: () => void;
+}>) => {
+  const titleId = useId();
+  const close = () => dialogRef.current?.close();
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      className="m-auto max-h-[90dvh] w-[min(92vw,46rem)] overflow-y-auto rounded-[2rem] bg-pearl p-6 text-burgundy shadow-2xl shadow-burgundy-deep/50 backdrop:bg-burgundy-deep/70 backdrop:backdrop-blur-sm sm:p-8"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2
+            id={titleId}
+            className="font-serif text-3xl leading-tight italic sm:text-4xl"
+          >
+            {picker.title}
+          </h2>
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-plum">
+            {picker.text}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={close}
+          aria-label={picker.close}
+          className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white text-2xl leading-none text-rose transition-colors hover:bg-rose hover:text-burgundy-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose"
+        >
+          <span aria-hidden="true" className="-mt-0.5">
+            ×
+          </span>
+        </button>
+      </div>
+      <ul className="mt-6 grid grid-cols-4 gap-2 sm:grid-cols-6 sm:gap-3">
+        {FINISHES.map((finish) => (
+          <li key={finish.name}>
+            <button
+              type="button"
+              onClick={() => {
+                onPick(finish);
+                close();
+              }}
+              className="relative flex w-full cursor-pointer flex-col items-center gap-2 rounded-2xl p-2 pt-3 transition-colors hover:bg-white focus-visible:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose"
+            >
+              <FinishSwatch finish={finish} className="h-16 text-burgundy" />
+              <span className="text-center text-[0.65rem] leading-tight font-semibold tracking-wide">
+                {picker.names[finish.name] ?? finish.name}
+              </span>
+              {finish.isNew && (
+                <span className="absolute top-1 right-1 rounded-full bg-rose px-1.5 py-0.5 text-[0.55rem] font-bold tracking-[0.15em] text-burgundy-deep uppercase">
+                  {picker.newLabel}
+                </span>
+              )}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-6 flex justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            onRandom();
+            close();
+          }}
+          className="inline-flex cursor-pointer items-center justify-center rounded-full bg-rose px-6 py-3 text-sm font-semibold tracking-wide text-burgundy-deep transition-colors hover:bg-rose-soft focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rose"
+        >
+          {picker.random}
+        </button>
+      </div>
+    </dialog>
+  );
+};
+
+// The drawing, the bottle's button with its tooltip, and the picker dialog.
+const HeroScene = ({
+  className,
+  picker,
+}: Readonly<{ className?: string; picker: Picker }>) => {
+  const sceneControl = useRef<SceneControl | undefined>(undefined);
+  const dialogReference = useRef<HTMLDialogElement>(null);
+  const tipId = useId();
+  // The hint stays up until the bottle is first opened; after that it is an
+  // ordinary tooltip on hover and focus.
+  const [hinted, setHinted] = useState(false);
+  // Stable, or React would restart the scene on every render.
+  const mount = useCallback((svg: SVGSVGElement | null) => {
+    if (!svg) return;
+    const started = startScene(svg);
+
+    if (!started) return;
+    const [controls, stop] = started;
+
+    sceneControl.current = controls;
+
+    return () => {
+      sceneControl.current = undefined;
+      stop();
+    };
+  }, []);
+
+  return (
+    <div className={`relative ${className ?? ""}`}>
+      <HeroDrawing svgRef={mount} />
+      <div className="absolute" style={BOTTLE_AREA}>
+        <button
+          type="button"
+          aria-label={picker.title}
+          aria-describedby={tipId}
+          onClick={() => {
+            setHinted(true);
+            dialogReference.current?.showModal();
+          }}
+          className="peer size-full cursor-pointer rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rose"
+        />
+        <span
+          role="tooltip"
+          id={tipId}
+          className={`pointer-events-none absolute right-0 bottom-full mb-3 rounded-full bg-pearl px-3.5 py-2 text-xs font-semibold whitespace-nowrap text-burgundy-deep shadow-lg shadow-burgundy-deep/40 transition-opacity duration-300 after:absolute after:top-full after:right-5 after:border-6 after:border-transparent after:border-t-pearl ${hinted ? "opacity-0 peer-hover:opacity-100 peer-focus-visible:opacity-100" : "rise"}`}
+          style={hinted ? undefined : delay(1.9)}
+        >
+          {picker.hint}
+        </span>
+      </div>
+      <PickerDialog
+        picker={picker}
+        dialogRef={dialogReference}
+        onPick={(finish) => sceneControl.current?.pick(finish)}
+        onRandom={() => sceneControl.current?.random()}
+      />
+    </div>
+  );
+};
+
+const HeroDrawing = ({
+  svgRef,
+}: Readonly<{ svgRef: (svg: SVGSVGElement | null) => void }>) => (
   <svg
-    ref={startScene}
+    ref={svgRef}
     viewBox="0 0 470 500"
     fill="none"
     stroke="currentColor"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className={className}
+    className="block w-full"
     aria-hidden="true"
   >
     <defs>

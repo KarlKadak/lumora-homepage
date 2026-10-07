@@ -1,4 +1,4 @@
-import { sparklePath } from "@/components/nail-art";
+import { NAIL, sparklePath } from "@/components/nail-art";
 
 // The finishes the hero brush cycles through. Each is a polish `paint` (a
 // plain colour or a gradient defined below) and, for the decorated ones, a
@@ -10,11 +10,21 @@ interface Finish {
   name: string;
   paint: string;
   decor?: string;
+  // Freshly added to the menu, flagged as such in the picker.
+  isNew?: boolean;
 }
 
 const gradient = (id: string) => `url(#hero-paint-${id})`;
 
+// The first finish opens every visit; the rest follow in a random order.
 const FINISHES: readonly Finish[] = [
+  { name: "halloween", paint: "#f07b2a", decor: "halloween", isNew: true },
+  {
+    name: "halloween-night",
+    paint: "#3b1a5e",
+    decor: "halloween-night",
+    isNew: true,
+  },
   // Everyday shades.
   { name: "rose", paint: "var(--color-rose)" },
   { name: "chrome", paint: gradient("chrome") },
@@ -55,6 +65,14 @@ const heartPath = (x: number, y: number, size: number) => {
   return `M${String(x)} ${String(y + s)}C${String(x - s * 1.6)} ${String(y - s * 0.2)} ${String(x - s * 0.9)} ${String(y - s * 1.3)} ${String(x)} ${String(y - s * 0.4)}C${String(x + s * 0.9)} ${String(y - s * 1.3)} ${String(x + s * 1.6)} ${String(y - s * 0.2)} ${String(x)} ${String(y + s)}Z`;
 };
 
+// A bat in flight, wings spread, centred on (x, y) and scaled by `size`.
+const batPath = (x: number, y: number, size: number) => {
+  const p = (dx: number, dy: number) =>
+    `${(x + dx * size).toFixed(1)} ${(y + dy * size).toFixed(1)}`;
+
+  return `M${p(0, 0)}C${p(-2, -4)} ${p(-5, -6)} ${p(-9, -6)}C${p(-13, -6)} ${p(-16, -3)} ${p(-18, 1)}C${p(-15, -1)} ${p(-12, -1)} ${p(-10, 1)}C${p(-7, 0)} ${p(-4, 2)} ${p(-2, 6)}C${p(-1, 4)} ${p(1, 4)} ${p(2, 6)}C${p(4, 2)} ${p(7, 0)} ${p(10, 1)}C${p(12, -1)} ${p(15, -1)} ${p(18, 1)}C${p(16, -3)} ${p(13, -6)} ${p(9, -6)}C${p(5, -6)} ${p(2, -4)} ${p(0, 0)}Z`;
+};
+
 // Deterministic scatter, so the server and client render the same markup.
 // Low-discrepancy sequences spread the specks evenly without a visible grid.
 const fraction = (value: number) => value - Math.floor(value);
@@ -82,6 +100,53 @@ const LEOPARD_SPOTS = [
 // Rows of dots, every other row shifted so they sit in a diamond grid.
 const POLKA = [-40, -22, -4, 14, 32, 50].flatMap((y, row) =>
   (row % 2 ? [-15, 0, 15] : [-7.5, 7.5]).map((x) => ({ x, y })),
+);
+
+// Halloween: polish dripping down from the tip, bats, and a jack-o'-lantern
+// grinning near the cuticle.
+const HalloweenDecor = ({
+  id,
+  drip,
+  bat,
+}: Readonly<{ id: string; drip: string; bat: string }>) => (
+  <g id={`hero-decor-${id}`} stroke="none">
+    <path
+      d="M-30-80H30V-36C27-36 26-20 22-20C18-20 18-40 14-40C10-40 11-14 6-14C1-14 2-44-4-44C-9-44-8-28-13-28C-18-28-17-46-22-46C-26-46-26-34-30-34Z"
+      fill={drip}
+    />
+    <path d={batPath(2, 2, 1)} fill={bat} />
+    <path d={batPath(-11, -8, 0.55)} fill={bat} opacity="0.85" />
+    <g transform="translate(4 36)">
+      <path d="M-1-11C-1-15 2-16 4-16C2-15 1-13 1-11Z" fill="#2f6b2e" />
+      <ellipse cx="0" cy="0" rx="12" ry="10" fill="#c24a12" />
+      <ellipse cx="-5" cy="0" rx="4.5" ry="10" fill="#d9601e" />
+      <ellipse cx="5" cy="0" rx="4.5" ry="10" fill="#d9601e" />
+      <ellipse cx="0" cy="0" rx="3" ry="10" fill="#e8762a" />
+      <path d="M-7-3L-3-1L-7 1Z M7-3L3-1L7 1Z" fill="#1c1118" />
+      <path d="M-7 3C-4 7 4 7 7 3L5 4L3 6L1 4L-1 6L-3 4L-5 5Z" fill="#1c1118" />
+    </g>
+  </g>
+);
+
+// A single nail wearing a finish, for the picker. It borrows the hero's
+// clip, gradients and decor, which share the document.
+const FinishSwatch = ({
+  finish,
+  className,
+}: Readonly<{ finish: Finish; className?: string }>) => (
+  <svg viewBox="-30 -78 60 148" className={className} aria-hidden="true">
+    <g clipPath="url(#hero-nail-clip)">
+      <rect x="-30" y="-75" width="60" height="140" fill={finish.paint} />
+      {finish.decor && <use href={`#hero-decor-${finish.decor}`} />}
+    </g>
+    <path
+      d={NAIL}
+      fill="none"
+      stroke="currentColor"
+      strokeOpacity="0.35"
+      strokeWidth="1.5"
+    />
+  </svg>
 );
 
 // Gradients and overlays for the hero's `defs`. The gradients use the nail's
@@ -259,6 +324,8 @@ const HeroFinishDefs = () => (
         <path key={y} d={`M-36 ${String(y)}L36 ${String(y - 36)}`} />
       ))}
     </g>
+    <HalloweenDecor id="halloween" drip="#1c1118" bat="#1c1118" />
+    <HalloweenDecor id="halloween-night" drip="#9be15d" bat="#1c1118" />
     <g id="hero-decor-festive" stroke="none">
       <path
         d="M-30-80H30V-30C18-34 8-46 0-50C-8-46-18-34-30-30Z"
@@ -278,6 +345,6 @@ const HeroFinishDefs = () => (
   </>
 );
 
-export { FINISHES, HeroFinishDefs, isGradient };
+export { FINISHES, FinishSwatch, HeroFinishDefs, isGradient };
 
 export type { Finish };
