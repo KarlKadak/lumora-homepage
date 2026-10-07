@@ -88,6 +88,9 @@ interface Digit {
   starts: Vec2;
   // Where the shape that hides what is behind the digit begins.
   root: number;
+  // How far round the fingertip the nail wraps, as a share of NAIL_WRAP;
+  // the thumb's nail is narrower for its girth.
+  nailWrap?: number;
 }
 
 const OUT: Vec3 = [0, 0, 1];
@@ -115,6 +118,7 @@ const THUMB: Digit = {
   radii: [13.5, 9.2, 8, 6.2],
   starts: [THENAR, 62],
   root: THENAR,
+  nailWrap: 0.8,
 };
 
 const INDEX: Digit = {
@@ -546,8 +550,9 @@ const buildHand = (yaw: number, zoom = 0): Hand => {
     const facingDorsal = direction(bone.dorsal).depth;
     const facingSide = direction(side).depth;
     const peak = Math.atan2(facingSide, facingDorsal) / DEG;
-    const from = Math.max(-NAIL_WRAP, peak - 90);
-    const to = Math.min(NAIL_WRAP, peak + 90);
+    const wrap = NAIL_WRAP * (limb.digit.nailWrap ?? 1);
+    const from = Math.max(-wrap, peak - 90);
+    const to = Math.min(wrap, peak + 90);
     const rim = (degrees: number) =>
       project(
         add(

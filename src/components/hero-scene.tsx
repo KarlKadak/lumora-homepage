@@ -774,12 +774,14 @@ const PickerDialog = ({
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2
+          {/* Not a heading: the dialog sits inside the hero, and a real <h2>
+              here would precede the page's first section heading. */}
+          <p
             id={titleId}
             className="font-serif text-3xl leading-tight italic sm:text-4xl"
           >
             {picker.title}
-          </h2>
+          </p>
           <p className="mt-2 max-w-md text-sm leading-relaxed text-plum">
             {picker.text}
           </p>
