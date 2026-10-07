@@ -21,3 +21,6 @@ next-env.d.ts
 
 # machine-specific Claude Code notes
 CLAUDE.local.md
+
+# temporary files
+tmp/

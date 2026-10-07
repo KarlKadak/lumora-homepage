@@ -45,6 +45,14 @@ const SHADES = [
 
 const FIRST_SHADE = "var(--color-rose)";
 
+// Gradients cannot transition, so the bottle fades a layer in for them.
+const isGradient = (shade: string) => shade.startsWith("url(");
+
+// Fresh polish is uncovered from the cuticle up rather than scaled, so a
+// gradient keeps its angle while it is painted on.
+const COVERED = "inset(100% 0 0 0)";
+const UNCOVERED = "inset(0 0 0 0)";
+
 const FINGER = "M-38 520V8C-38-18-22-30 0-30C22-30 38-18 38 8V520";
 const ARCH = "M0 200A200 200 0 0 1 400 200V460Q400 500 360 500H40Q0 500 0 460Z";
 const ARCH_INNER =
@@ -118,6 +126,7 @@ interface SceneParts {
   brush: SVGElement;
   bristles: SVGElement;
   liquid: SVGElement;
+  liquidGradient: SVGElement;
   pop: SVGElement;
   nails: NailParts[];
 }
@@ -136,10 +145,18 @@ const findParts = (svg: SVGSVGElement): SceneParts | undefined => {
   const brush = pick(svg, "[data-brush]");
   const bristles = pick(svg, "[data-bristles]");
   const liquid = pick(svg, "[data-liquid]");
+  const liquidGradient = pick(svg, "[data-liquid-gradient]");
   const pop = pick(svg, "[data-pop]");
 
-  return brush && bristles && liquid && pop && nails.length === FINGERS.length ?
-      { brush, bristles, liquid, pop, nails }
+  return (
+      brush &&
+        bristles &&
+        liquid &&
+        liquidGradient &&
+        pop &&
+        nails.length === FINGERS.length
+    ) ?
+      { brush, bristles, liquid, liquidGradient, pop, nails }
     : undefined;
 };
 
@@ -163,14 +180,10 @@ const paintNail = async (
   fresh.style.fill = shade;
   await Promise.all([
     animateTo(brush, [{ transform: pose(end.x, end.y, angle) }], stroke),
-    animateTo(
-      fresh,
-      [{ transform: "scaleY(0)" }, { transform: "scaleY(1)" }],
-      stroke,
-    ),
+    animateTo(fresh, [{ clipPath: COVERED }, { clipPath: UNCOVERED }], stroke),
   ]);
   base.style.fill = shade;
-  fresh.style.transform = "scaleY(0)";
+  fresh.style.clipPath = COVERED;
 
   // Fire-and-forget flourishes: a glint on the fresh polish and a sparkle.
   gloss.animate([{ opacity: 1, offset: 0.4 }, { opacity: 0.75 }], {
@@ -206,7 +219,12 @@ const paintRound = async (
     420,
     "ease-in",
   );
-  parts.liquid.style.fill = nextShade;
+  if (isGradient(nextShade)) {
+    parts.liquidGradient.style.opacity = "1";
+  } else {
+    parts.liquid.style.fill = nextShade;
+    parts.liquidGradient.style.opacity = "0";
+  }
   await sleep(1900, signal);
 };
 
@@ -322,11 +340,7 @@ const HeroScene = ({ className }: Readonly<{ className?: string }>) => (
                 y="-75"
                 width="60"
                 height="140"
-                style={{
-                  transformBox: "fill-box",
-                  transformOrigin: "50% 100%",
-                  transform: "scaleY(0)",
-                }}
+                style={{ clipPath: COVERED }}
               />
             </g>
             <path
@@ -414,6 +428,17 @@ const HeroScene = ({ className }: Readonly<{ className?: string }>) => (
         rx="13"
         strokeWidth="1.5"
         style={{ fill: FIRST_SHADE, transition: "fill 0.8s ease" }}
+      />
+      <rect
+        data-liquid-gradient
+        x="395"
+        y="440"
+        width="60"
+        height="58"
+        rx="13"
+        strokeWidth="1.5"
+        fill="url(#hero-chrome)"
+        style={{ opacity: 0, transition: "opacity 0.8s ease" }}
       />
       <path d="M405 452V484" strokeWidth="3" className="stroke-white/45" />
       <path

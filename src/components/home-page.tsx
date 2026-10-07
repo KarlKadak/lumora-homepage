@@ -188,14 +188,26 @@ const Hero = ({ hero }: Readonly<{ hero: Dictionary["hero"] }>) => (
   </section>
 );
 
+// Each half of the marquee repeats the items so it outspans ultrawide screens;
+// the animation duration in globals.css scales with this count.
+const MARQUEE_REPEATS = 6;
+
 const Marquee = ({ items }: Readonly<{ items: string[] }>) => {
+  const repeated = Array.from({ length: MARQUEE_REPEATS }, (_, round) =>
+    items.map((item) => ({ item, key: `${item}-${String(round)}` })),
+  ).flat();
+
   const renderItems = (hidden: boolean) => (
     <ul
       className="flex shrink-0 items-center"
       aria-hidden={hidden ? "true" : undefined}
     >
-      {items.map((item) => (
-        <li key={item} className="flex items-center">
+      {repeated.map(({ item, key }, index) => (
+        <li
+          key={key}
+          className="flex items-center"
+          aria-hidden={!hidden && index >= items.length ? "true" : undefined}
+        >
           <span className="px-6 font-serif text-2xl italic sm:px-8 sm:text-3xl">
             {item}
           </span>
@@ -206,9 +218,11 @@ const Marquee = ({ items }: Readonly<{ items: string[] }>) => {
   );
 
   // Tilted band laid across the seam between the hero and the next section.
+  // The tilt flattens on wide screens so the band's ends never rise more than
+  // 1.5rem off centre, keeping the seam covered edge to edge.
   return (
-    <div className="relative z-10 -mt-10 overflow-x-clip">
-      <div className="-mx-[5%] -rotate-2 bg-rose py-4 text-burgundy-deep shadow-lg shadow-burgundy-deep/20">
+    <div className="relative z-10 -mt-[2.125rem] overflow-x-clip">
+      <div className="-mx-[5%] rotate-[calc(-1*min(2deg,atan2(1.5rem,50vw)))] bg-rose py-4 text-burgundy-deep shadow-lg shadow-burgundy-deep/20">
         <div className="flex w-max animate-marquee">
           {renderItems(false)}
           {renderItems(true)}
@@ -322,7 +336,7 @@ const Time = ({ time }: Readonly<{ time: Dictionary["time"] }>) => (
         {time.items.map((item) => (
           <li
             key={item.kind}
-            className="reveal relative flex flex-col overflow-hidden rounded-[2rem] rounded-tl-[4.5rem] bg-pearl p-7 pt-9 transition-transform duration-300 hover:-translate-y-1.5"
+            className="reveal relative flex flex-col overflow-hidden rounded-[2rem] rounded-tl-[4.5rem] rounded-br-[4.5rem] bg-pearl p-7 pt-9 transition-transform duration-300 hover:-translate-y-1.5"
           >
             <NailGlyph className="absolute -right-3 -bottom-12 h-44 w-auto rotate-[18deg] fill-none stroke-rose/25 stroke-[1.5]" />
             <PerkLogo kind={item.kind} />
@@ -337,9 +351,17 @@ const Time = ({ time }: Readonly<{ time: Dictionary["time"] }>) => (
   </section>
 );
 
-// Instagram's profile embed: header plus a grid of the latest posts. It fills
-// itself, so new posts show up without rebuilding the site. The iframe cannot
-// report its height, so it gets roughly a square grid plus the header.
+// Instagram's profile embed: header plus a grid of the six latest posts. The
+// iframe cannot report its height, so EMBED_HEIGHT mirrors its layout: two
+// rows of square tiles (two thirds of the card's width) under a header that
+// grows by 11px once the frame is wider than 480px (the step is clamp() over
+// a huge multiplier). It ends at the grid, cutting off the embed's "View full
+// profile" footer (the follow button beside it links there), and scrolling is
+// off so the footer stays hidden. The card's smaller top-right radius follows
+// the curve of Instagram's logo in that corner.
+const EMBED_HEIGHT =
+  "calc(100cqw * 2 / 3 + 146.5px + clamp(0px, (100cqw - 480px) * 1000, 11px))";
+
 const Instagram = ({
   instagram,
 }: Readonly<{ instagram: Dictionary["instagram"] }>) => (
@@ -361,19 +383,18 @@ const Instagram = ({
           {instagram.follow}
         </a>
       </div>
-      <div className="reveal relative mt-12 mr-3 mb-3 lg:mt-0">
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 translate-x-3 translate-y-3 rounded-[2rem] rounded-tl-[5rem] border border-rose"
+      <div className="reveal @container mt-12 overflow-hidden rounded-[2rem] rounded-tl-[5rem] rounded-tr-2xl rounded-br-[5rem] bg-white lg:mt-0">
+        <iframe
+          src={`${INSTAGRAM_URL}embed/`}
+          title={instagram.embedTitle}
+          className="block w-full border-0"
+          style={{ height: EMBED_HEIGHT }}
+          loading="eager"
+          // Obsolete but supported everywhere, and the only way to stop a
+          // cross-origin page from scrolling.
+          // eslint-disable-next-line @typescript-eslint/no-deprecated
+          scrolling="no"
         />
-        <div className="relative overflow-hidden rounded-[2rem] rounded-tl-[5rem] bg-white pt-6">
-          <iframe
-            src={`${INSTAGRAM_URL}embed/`}
-            title={instagram.embedTitle}
-            className="block h-[calc(min(100vw-3.5rem,36rem)+11rem)] w-full border-0"
-            loading="lazy"
-          />
-        </div>
       </div>
     </div>
   </section>
@@ -465,7 +486,7 @@ const Visit = ({ visit }: Readonly<{ visit: Dictionary["visit"] }>) => {
               title={visit.mapTitle}
               className="block aspect-square w-full border-0 sm:aspect-4/3"
               allowFullScreen
-              loading="lazy"
+              loading="eager"
               referrerPolicy="strict-origin-when-cross-origin"
             />
           </div>
