@@ -56,6 +56,10 @@ const VIEW = {
 
 // The close-up, for admiring a chosen finish: the hand fills the arch and
 // the wrist itself drops out of view. `zoom` runs from 0 (VIEW) to 1 (this).
+// How far round the fingertip the nail wraps, in degrees either side of the
+// back of the finger.
+const NAIL_WRAP = 64;
+
 const CLOSE_UP = { scale: 3.17, wrist: [190, 575] as const };
 
 interface Screen {
@@ -521,27 +525,50 @@ const buildHand = (yaw: number, zoom = 0): Hand => {
     edgePoint(index, -1, INDEX.starts[0]),
   ]);
 
+  // The nail is a band wrapped round the fingertip, reaching NAIL_WRAP either
+  // side of the back of the finger. What shows is the part of that arc that
+  // faces the viewer, so turned side-on the nail keeps its width as its
+  // visible edge rides round to the finger's silhouette, rather than
+  // thinning to a sliver the way a flat shape would.
   const nailOf = (limb: Limb): NailPose => {
     const bone = limb.last;
-    const r = radiusAt(limb, bone.from + bone.length * 0.6);
-    const scaleX = (1.55 * r) / 48;
-    const scaleY = (0.54 * bone.length + 8) / 122;
-    const origin = project(
-      add(
-        add(bone.start, scale(bone.direction, 0.5 * bone.length + 52 * scaleY)),
-        scale(bone.dorsal, r * 0.98),
-      ),
+    const r = radiusAt(limb, bone.from + bone.length * 0.6) * 0.98;
+    const scaleY = (0.58 * bone.length + 9) / 122;
+    // Sits up at the fingertip: the nail's cuticle end starts past the
+    // middle of the last bone, and its free edge reaches past the tip.
+    const axis = add(
+      bone.start,
+      scale(bone.direction, 0.7 * bone.length + 52 * scaleY),
     );
-    const across = direction(scale(cross(bone.direction, bone.dorsal), scaleX));
+    const side = normalize(cross(bone.direction, bone.dorsal));
+    // How much the arc faces the viewer, by angle round the finger: a cosine
+    // peaking where the surface normal points straight out of the screen.
+    const facingDorsal = direction(bone.dorsal).depth;
+    const facingSide = direction(side).depth;
+    const peak = Math.atan2(facingSide, facingDorsal) / DEG;
+    const from = Math.max(-NAIL_WRAP, peak - 90);
+    const to = Math.min(NAIL_WRAP, peak + 90);
+    const rim = (degrees: number) =>
+      project(
+        add(
+          axis,
+          add(
+            scale(bone.dorsal, r * Math.cos(degrees * DEG)),
+            scale(side, r * Math.sin(degrees * DEG)),
+          ),
+        ),
+      );
+    const left = rim(from);
+    const right = rim(to);
     const along = direction(scale(bone.direction, -scaleY));
 
     return {
-      a: across.x,
-      b: across.y,
+      a: (right.x - left.x) / 48,
+      b: (right.y - left.y) / 48,
       c: along.x,
       d: along.y,
-      e: origin.x,
-      f: origin.y,
+      e: (left.x + right.x) / 2,
+      f: (left.y + right.y) / 2,
       angle: Math.atan2(-along.x, along.y) / DEG,
       facing: direction(bone.dorsal).depth,
     };
