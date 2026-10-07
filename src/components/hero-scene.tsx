@@ -179,6 +179,9 @@ interface LayerParts {
 
 interface NailParts {
   frame: SVGElement;
+  // The nail's silhouette in `defs`, which the masks use to hide what lies
+  // behind it.
+  shape: SVGElement;
   rim: SVGElement;
   cuticle: SVGElement;
   base: SVGElement;
@@ -236,6 +239,7 @@ const findParts = (svg: SVGSVGElement): SceneParts | undefined => {
   const nails = HAND.nails
     .map((_, index) => {
       const group = svg.querySelector(`[data-nail="${String(index)}"]`);
+      const shape = pick(svg, `#hero-nail-${String(index)}`);
       const frame = group && pick(group, "[data-frame]");
       const rim = group && pick(group, "[data-rim]");
       const cuticle = group && pick(group, "[data-cuticle]");
@@ -244,8 +248,10 @@ const findParts = (svg: SVGSVGElement): SceneParts | undefined => {
       const fresh = group && pick(group, "[data-fresh]");
       const gloss = group && pick(group, "[data-gloss]");
 
-      return frame && rim && cuticle && base && decor && fresh && gloss ?
-          { frame, rim, cuticle, base, decor, fresh, gloss }
+      return (
+          frame && shape && rim && cuticle && base && decor && fresh && gloss
+        ) ?
+          { frame, shape, rim, cuticle, base, decor, fresh, gloss }
         : undefined;
     })
     .filter((nail) => nail !== undefined);
@@ -308,8 +314,11 @@ const applyHand = (parts: SceneParts, hand: Hand) => {
     const target = parts.nails[index];
 
     if (target) {
+      const outline = placePath(NAIL, nail);
+
       target.frame.setAttribute("transform", nailTransform(nail));
-      target.rim.setAttribute("d", placePath(NAIL, nail));
+      target.shape.setAttribute("d", outline);
+      target.rim.setAttribute("d", outline);
       target.cuticle.setAttribute("d", placePath(CUTICLE, nail));
       target.gloss.setAttribute("d", placePath(GLOSS, nail));
     }
@@ -594,9 +603,9 @@ const HeroScene = ({ className }: Readonly<{ className?: string }>) => (
           ))}
         </mask>
       ))}
-      {/* The same without the nails, for the nails themselves and for the
-          brush painting them: both are hidden where a nearer finger covers
-          them. */}
+      {/* The same without a digit's own nail, for the nails themselves and
+          for the brush painting them: both are hidden where a nearer finger
+          or a nearer nail covers them. */}
       {HAND.layers.slice(1).map((_, index) => (
         <mask
           key={index}
@@ -605,6 +614,15 @@ const HeroScene = ({ className }: Readonly<{ className?: string }>) => (
           {...MASK_AREA}
         >
           <rect {...MASK_AREA} fill="white" stroke="none" />
+          {HAND.nails.slice(0, index + 1).map((_, nearer) => (
+            <use
+              key={nearer}
+              href={`#hero-nail-${String(nearer)}`}
+              fill="black"
+              stroke="black"
+              strokeWidth="1"
+            />
+          ))}
           {HAND.layers.slice(0, index + 1).map((layer) => (
             <use
               key={layer.key}
