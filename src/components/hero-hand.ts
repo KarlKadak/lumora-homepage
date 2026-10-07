@@ -5,7 +5,7 @@
 // hand does and every nail faces wherever its fingertip points. Only outlines
 // are drawn: nearer parts hide the lines of the parts behind them.
 //
-// Model units: the wrist crease to the middle knuckle is 100. x runs towards
+// Model units: the wrist crease to the middle knuckle is about 79. x runs towards
 // the little finger, y towards the fingertips, z out of the back of the hand.
 
 type Vec3 = readonly [number, number, number];
@@ -46,12 +46,12 @@ const rotate = (v: Vec3, axis: Vec3, degrees: number): Vec3 => {
 // fingers overlap, seen slightly from above, the wrist bent back as a hand
 // held up is, and the whole arm leaning in from the lower left.
 const VIEW = {
-  yaw: 26,
+  yaw: 40,
   pitch: 16,
   roll: 10,
   extension: 24,
-  scale: 1.65,
-  wrist: [214, 388] as const,
+  scale: 1.92,
+  wrist: [186, 410] as const,
 };
 
 interface Screen {
@@ -60,38 +60,6 @@ interface Screen {
   // Towards the viewer.
   depth: number;
 }
-
-// Orthographic projection into the arch. The forearm is projected without the
-// wrist extension, which only bends the hand.
-const project = (point: Vec3, hand = true): Screen => {
-  const bent = hand ? rotate(point, [1, 0, 0], VIEW.extension) : point;
-  const [x, y, depth] = rotate(
-    rotate(bent, [0, 1, 0], VIEW.yaw),
-    [1, 0, 0],
-    VIEW.pitch,
-  );
-  const sin = Math.sin(VIEW.roll * DEG);
-  const cos = Math.cos(VIEW.roll * DEG);
-
-  // Screen y runs down, then the arm is rolled clockwise.
-  return {
-    x: VIEW.wrist[0] + VIEW.scale * (x * cos + y * sin),
-    y: VIEW.wrist[1] + VIEW.scale * (x * sin - y * cos),
-    depth,
-  };
-};
-
-// A hand-space vector projected without the translation.
-const direction = (v: Vec3): Screen => {
-  const origin = project([0, 0, 0]);
-  const tip = project(v);
-
-  return {
-    x: tip.x - origin.x,
-    y: tip.y - origin.y,
-    depth: tip.depth - origin.depth,
-  };
-};
 
 interface Digit {
   // Where the digit hangs off the hand: the knuckle, or the base of the thumb
@@ -137,23 +105,23 @@ const THUMB: Digit = {
   bones: [46, 30, 26],
   curl: [0, 24, 38],
   radii: [13.5, 9.2, 8, 6.2],
-  starts: [THENAR, 56],
+  starts: [THENAR, 62],
   root: THENAR,
 };
 
 const INDEX: Digit = {
-  base: [-27, 95, -7],
+  base: [-27, 74, -7],
   heading: lean(-6),
   dorsal: OUT,
   bones: [40, 24, 21],
   curl: [10, 30, 20],
   radii: [8.6, 7.2, 6.2, 5.3],
-  starts: [-6, WEB],
+  starts: [-2, WEB],
   root: PALM,
 };
 
 const MIDDLE: Digit = {
-  base: [-9, 100, -7],
+  base: [-9, 79, -7],
   heading: lean(-1),
   dorsal: OUT,
   bones: [44, 27, 22],
@@ -164,7 +132,7 @@ const MIDDLE: Digit = {
 };
 
 const RING: Digit = {
-  base: [9, 97, -7],
+  base: [9, 76, -7],
   heading: lean(3),
   dorsal: OUT,
   bones: [41, 26, 21],
@@ -175,7 +143,7 @@ const RING: Digit = {
 };
 
 const PINKY: Digit = {
-  base: [29, 88, -7],
+  base: [29, 67, -7],
   heading: lean(9),
   dorsal: OUT,
   bones: [31, 20, 18],
@@ -262,55 +230,10 @@ const radiusAt = (limb: Limb, s: number) => {
   );
 };
 
-const screenAt = (limb: Limb, s: number) => project(pointAt(limb, s));
-
 // Sampling along a digit, in model units, and how far either side of a point
 // its tangent is averaged so the joints round off.
 const STEP = 10;
 const BLUR = 5;
-
-const tangentAt = (limb: Limb, s: number): Vec2 => {
-  const before = screenAt(limb, Math.max(s - BLUR, PALM - BLUR));
-  const after = screenAt(limb, Math.min(s + BLUR, limb.length));
-  const length = Math.hypot(after.x - before.x, after.y - before.y);
-
-  return [(after.x - before.x) / length, (after.y - before.y) / length];
-};
-
-// A point on the digit's outline: `side` is -1 for screen left, 1 for right.
-const edgePoint = (limb: Limb, side: 1 | -1, s: number): Vec2 => {
-  const point = screenAt(limb, s);
-  const [tx, ty] = tangentAt(limb, s);
-  const r = radiusAt(limb, s) * VIEW.scale;
-
-  return [point.x - side * ty * r, point.y + side * tx * r];
-};
-
-const edge = (limb: Limb, side: 1 | -1, from: number) => {
-  const count = Math.max(1, Math.ceil((limb.length - from) / STEP));
-
-  return Array.from({ length: count + 1 }, (_, index) =>
-    edgePoint(limb, side, from + ((limb.length - from) * index) / count),
-  );
-};
-
-// The rounded fingertip, from the left edge over the tip to the right edge.
-const cap = (limb: Limb) => {
-  const point = screenAt(limb, limb.length);
-  const [tx, ty] = tangentAt(limb, limb.length);
-  const r = radiusAt(limb, limb.length) * VIEW.scale;
-
-  return [-60, -30, 0, 30, 60].map((degrees): Vec2 => {
-    const sin = Math.sin(degrees * DEG);
-    const cos = Math.cos(degrees * DEG);
-    const reach = r * (1 + 0.15 * cos);
-
-    return [
-      point.x + (tx * cos - ty * sin) * reach,
-      point.y + (tx * sin + ty * cos) * reach,
-    ];
-  });
-};
 
 const format = (value: number) => value.toFixed(1);
 
@@ -334,19 +257,6 @@ const smoothPath = (points: readonly Vec2[]) => {
   return `M${pointString(at(0))}${segments.join("")}`;
 };
 
-// The visible outline of a digit is open at its base, where it merges into
-// the hand; the shape used to hide what is behind it is closed and reaches a
-// little into the palm.
-const outlineOf = (limb: Limb) =>
-  smoothPath([
-    ...edge(limb, -1, limb.digit.starts[0]),
-    ...cap(limb),
-    ...edge(limb, 1, limb.digit.starts[1]).toReversed(),
-  ]);
-
-const shapeOf = (limb: Limb) =>
-  `${smoothPath([...edge(limb, -1, limb.digit.root), ...cap(limb), ...edge(limb, 1, limb.digit.root).toReversed()])}Z`;
-
 const quadraticThrough = (start: Vec2, middle: Vec2, end: Vec2) => {
   const control: Vec2 = [
     2 * middle[0] - (start[0] + end[0]) / 2,
@@ -354,45 +264,6 @@ const quadraticThrough = (start: Vec2, middle: Vec2, end: Vec2) => {
   ];
 
   return `M${pointString(start)}Q${pointString(control)} ${pointString(end)}`;
-};
-
-// A skin crease over the back of a joint, when that side faces the viewer.
-const creaseAt = (limb: Limb, index: number) => {
-  const [before, after] = [limb.bones[index - 1], limb.bones[index]];
-
-  if (!before || !after) return "";
-  const dorsal = normalize(add(before.dorsal, after.dorsal));
-  const along = normalize(add(before.direction, after.direction));
-
-  if (direction(dorsal).depth < 0.2) return "";
-  const across = cross(along, dorsal);
-  const r = radiusAt(limb, after.from) * 0.95;
-  const [start, middle, end] = [-45, 0, 45].map((degrees): Vec2 => {
-    const point = project(
-      add(
-        add(after.start, scale(dorsal, r * Math.cos(degrees * DEG))),
-        scale(across, r * Math.sin(degrees * DEG)),
-      ),
-    );
-
-    return [point.x, point.y];
-  });
-
-  return start && middle && end ? quadraticThrough(start, middle, end) : "";
-};
-
-// The web of skin between two neighbouring fingers.
-const webBetween = (left: Limb, right: Limb) => {
-  const start = edgePoint(left, 1, left.digit.starts[1]);
-  const end = edgePoint(right, -1, right.digit.starts[0]);
-  const [tx, ty] = tangentAt(right, right.digit.starts[0]);
-  const dip = 5 * VIEW.scale;
-  const middle: Vec2 = [
-    (start[0] + end[0]) / 2 - tx * dip,
-    (start[1] + end[1]) / 2 - ty * dip,
-  ];
-
-  return quadraticThrough(start, middle, end);
 };
 
 const thumb = limbOf(THUMB);
@@ -407,69 +278,6 @@ interface Layer {
   shape: string;
   details: string;
 }
-
-const layerOf = (
-  key: string,
-  limb: Limb,
-  details: readonly string[],
-): Layer => ({
-  key,
-  outline: outlineOf(limb),
-  shape: shapeOf(limb),
-  details: [creaseAt(limb, 1), creaseAt(limb, 2), ...details].join(""),
-});
-
-// Nearest first; each layer hides the outlines of the ones after it.
-const HAND_LAYERS: readonly Layer[] = [
-  layerOf("thumb", thumb, []),
-  layerOf("index", index, []),
-  layerOf("middle", middle, [webBetween(index, middle)]),
-  layerOf("ring", ring, [webBetween(middle, ring)]),
-  layerOf("pinky", pinky, [webBetween(ring, pinky)]),
-];
-
-const arm = (point: Vec3): Vec2 => {
-  const { x, y } = project(point, false);
-
-  return [x, y];
-};
-
-const hand = (point: Vec3): Vec2 => {
-  const { x, y } = project(point);
-
-  return [x, y];
-};
-
-// The forearm and palm, as the two sides of their silhouette: up the thumb
-// side into the index finger and up the little-finger side into the pinky.
-// The thumb side is nearer, so its silhouette is the palm's underside edge.
-const HAND_BODY: readonly string[] = [
-  smoothPath([
-    arm([-27.5, -170, 0]),
-    arm([-25, -70, 0]),
-    arm([-24.5, -24, 0]),
-    edgePoint(thumb, -1, THENAR),
-  ]),
-  smoothPath([
-    arm([28.5, -170, 0]),
-    arm([26.5, -70, 0]),
-    arm([25.5, -18, 0]),
-    hand([26.5, 0, -1]),
-    hand([30, 11, -3]),
-    hand([33.5, 40, -5]),
-    edgePoint(pinky, 1, PALM),
-  ]),
-];
-
-// The wide web between the thumb and the index finger: from the inside of
-// the thumb's knuckle, down the edge of the palm and up into the index.
-const HAND_DETAILS = smoothPath([
-  edgePoint(thumb, 1, THUMB.starts[1]),
-  hand([-39, 65, -11]),
-  hand([-34.5, 77, -11]),
-  edgePoint(index, -1, -6),
-  edgePoint(index, -1, 6),
-]);
 
 // A nail as an affine map from the nail drawings' own space (tip up at the
 // origin, 48 wide, from y 52 at the cuticle to -70 at the tip) onto the
@@ -488,36 +296,255 @@ interface NailPose {
   facing: number;
 }
 
-const nailOf = (limb: Limb): NailPose => {
-  const bone = limb.last;
-  const r = radiusAt(limb, bone.from + bone.length * 0.6);
-  const scaleX = (1.4 * r) / 48;
-  const scaleY = (0.5 * bone.length + 6) / 122;
-  const origin = project(
-    add(
-      add(bone.start, scale(bone.direction, 0.5 * bone.length + 52 * scaleY)),
-      scale(bone.dorsal, r * 0.98),
-    ),
-  );
-  const across = direction(scale(cross(bone.direction, bone.dorsal), scaleX));
-  const along = direction(scale(bone.direction, -scaleY));
+interface Hand {
+  layers: readonly Layer[];
+  body: readonly string[];
+  details: string;
+  // Thumb to little finger: the order the brush paints them in.
+  nails: readonly NailPose[];
+}
 
-  return {
-    a: across.x,
-    b: across.y,
-    c: along.x,
-    d: along.y,
-    e: origin.x,
-    f: origin.y,
-    angle: Math.atan2(-along.x, along.y) / DEG,
-    facing: direction(bone.dorsal).depth,
+// Projects the hand at the given yaw. The hand turns slowly in the hero, so
+// this runs every frame: everything in here is a function of the view.
+const buildHand = (yaw: number): Hand => {
+  // Orthographic projection into the arch. The forearm is projected without the
+  // wrist extension, which only bends the hand.
+  const project = (point: Vec3, hand = true): Screen => {
+    const bent = hand ? rotate(point, [1, 0, 0], VIEW.extension) : point;
+    const [x, y, depth] = rotate(
+      rotate(bent, [0, 1, 0], yaw),
+      [1, 0, 0],
+      VIEW.pitch,
+    );
+    const sin = Math.sin(VIEW.roll * DEG);
+    const cos = Math.cos(VIEW.roll * DEG);
+
+    // Screen y runs down, then the arm is rolled clockwise.
+    return {
+      x: VIEW.wrist[0] + VIEW.scale * (x * cos + y * sin),
+      y: VIEW.wrist[1] + VIEW.scale * (x * sin - y * cos),
+      depth,
+    };
   };
+
+  // A hand-space vector projected without the translation.
+  const direction = (v: Vec3): Screen => {
+    const origin = project([0, 0, 0]);
+    const tip = project(v);
+
+    return {
+      x: tip.x - origin.x,
+      y: tip.y - origin.y,
+      depth: tip.depth - origin.depth,
+    };
+  };
+
+  const screenAt = (limb: Limb, s: number) => project(pointAt(limb, s));
+
+  const tangentAt = (limb: Limb, s: number): Vec2 => {
+    const before = screenAt(limb, Math.max(s - BLUR, PALM - BLUR));
+    const after = screenAt(limb, Math.min(s + BLUR, limb.length));
+    const length = Math.hypot(after.x - before.x, after.y - before.y);
+
+    return [(after.x - before.x) / length, (after.y - before.y) / length];
+  };
+
+  // A point on the digit's outline: `side` is -1 for screen left, 1 for right.
+  const edgePoint = (limb: Limb, side: 1 | -1, s: number): Vec2 => {
+    const point = screenAt(limb, s);
+    const [tx, ty] = tangentAt(limb, s);
+    const r = radiusAt(limb, s) * VIEW.scale;
+
+    return [point.x - side * ty * r, point.y + side * tx * r];
+  };
+
+  const edge = (limb: Limb, side: 1 | -1, from: number) => {
+    const count = Math.max(1, Math.ceil((limb.length - from) / STEP));
+
+    return Array.from({ length: count + 1 }, (_, index) =>
+      edgePoint(limb, side, from + ((limb.length - from) * index) / count),
+    );
+  };
+
+  // The rounded fingertip, from the left edge over the tip to the right edge.
+  const cap = (limb: Limb) => {
+    const point = screenAt(limb, limb.length);
+    const [tx, ty] = tangentAt(limb, limb.length);
+    const r = radiusAt(limb, limb.length) * VIEW.scale;
+
+    return [-60, -30, 0, 30, 60].map((degrees): Vec2 => {
+      const sin = Math.sin(degrees * DEG);
+      const cos = Math.cos(degrees * DEG);
+      const reach = r * (1 + 0.15 * cos);
+
+      return [
+        point.x + (tx * cos - ty * sin) * reach,
+        point.y + (tx * sin + ty * cos) * reach,
+      ];
+    });
+  };
+
+  // The visible outline of a digit is open at its base, where it merges into
+  // the hand; the shape used to hide what is behind it is closed and reaches a
+  // little into the palm.
+  const outlineOf = (limb: Limb) =>
+    smoothPath([
+      ...edge(limb, -1, limb.digit.starts[0]),
+      ...cap(limb),
+      ...edge(limb, 1, limb.digit.starts[1]).toReversed(),
+    ]);
+
+  const shapeOf = (limb: Limb) =>
+    `${smoothPath([...edge(limb, -1, limb.digit.root), ...cap(limb), ...edge(limb, 1, limb.digit.root).toReversed()])}Z`;
+
+  // A skin crease over the back of a joint, when that side faces the viewer.
+  const creaseAt = (limb: Limb, index: number) => {
+    const [before, after] = [limb.bones[index - 1], limb.bones[index]];
+
+    if (!before || !after) return "";
+    const dorsal = normalize(add(before.dorsal, after.dorsal));
+    const along = normalize(add(before.direction, after.direction));
+
+    if (direction(dorsal).depth < 0.2) return "";
+    const across = cross(along, dorsal);
+    const r = radiusAt(limb, after.from) * 0.95;
+    const [start, middle, end] = [-45, 0, 45].map((degrees): Vec2 => {
+      const point = project(
+        add(
+          add(after.start, scale(dorsal, r * Math.cos(degrees * DEG))),
+          scale(across, r * Math.sin(degrees * DEG)),
+        ),
+      );
+
+      return [point.x, point.y];
+    });
+
+    return start && middle && end ? quadraticThrough(start, middle, end) : "";
+  };
+
+  // The web of skin between two neighbouring fingers.
+  const webBetween = (left: Limb, right: Limb) => {
+    const start = edgePoint(left, 1, left.digit.starts[1]);
+    const end = edgePoint(right, -1, right.digit.starts[0]);
+    const [tx, ty] = tangentAt(right, right.digit.starts[0]);
+    const dip = 5 * VIEW.scale;
+    const middle: Vec2 = [
+      (start[0] + end[0]) / 2 - tx * dip,
+      (start[1] + end[1]) / 2 - ty * dip,
+    ];
+
+    return quadraticThrough(start, middle, end);
+  };
+
+  const layerOf = (
+    key: string,
+    limb: Limb,
+    details: readonly string[],
+  ): Layer => ({
+    key,
+    outline: outlineOf(limb),
+    shape: shapeOf(limb),
+    details: [creaseAt(limb, 1), creaseAt(limb, 2), ...details].join(""),
+  });
+
+  // Nearest first; each layer hides the outlines of the ones after it.
+  const layers: readonly Layer[] = [
+    layerOf("thumb", thumb, []),
+    layerOf("index", index, []),
+    layerOf("middle", middle, [webBetween(index, middle)]),
+    layerOf("ring", ring, [webBetween(middle, ring)]),
+    layerOf("pinky", pinky, [webBetween(ring, pinky)]),
+  ];
+
+  const arm = (point: Vec3): Vec2 => {
+    const { x, y } = project(point, false);
+
+    return [x, y];
+  };
+
+  const hand = (point: Vec3): Vec2 => {
+    const { x, y } = project(point);
+
+    return [x, y];
+  };
+
+  // The little-finger side of the palm, from the wrist to where the pinky's
+  // outer outline begins: one curve that leaves the wrist along the forearm
+  // and arrives along the pinky's edge, so neither end shows a corner.
+  const heelSide = (forearm: readonly Vec2[]) => {
+    const [previous, start] = forearm.slice(-2);
+
+    if (!previous || !start) return "";
+    const away = Math.hypot(start[0] - previous[0], start[1] - previous[1]);
+    const end = edgePoint(pinky, 1, PALM);
+    const [tx, ty] = tangentAt(pinky, PALM);
+    const reach = 24 * VIEW.scale;
+    const leave: Vec2 = [
+      start[0] + ((start[0] - previous[0]) / away) * reach,
+      start[1] + ((start[1] - previous[1]) / away) * reach,
+    ];
+    const arrive: Vec2 = [end[0] - tx * reach, end[1] - ty * reach];
+
+    return `${smoothPath(forearm)}C${pointString(leave)} ${pointString(arrive)} ${pointString(end)}`;
+  };
+
+  // The forearm and palm, as the two sides of their silhouette: up the thumb
+  // side into the index finger and up the little-finger side into the pinky.
+  // The thumb side is nearer, so its silhouette is the palm's underside edge.
+  const body: readonly string[] = [
+    smoothPath([
+      arm([-27.5, -170, 0]),
+      arm([-25, -70, 0]),
+      arm([-24.5, -24, 0]),
+      edgePoint(thumb, -1, THENAR),
+    ]),
+    heelSide([arm([28.5, -170, 0]), arm([26.5, -70, 0]), arm([25.5, -24, 0])]),
+  ];
+
+  // The wide web between the thumb and the index finger: from the inside of
+  // the thumb's knuckle, down the edge of the palm and up into the index.
+  const details = smoothPath([
+    edgePoint(thumb, 1, THUMB.starts[1]),
+    hand([-39, 55, -11]),
+    hand([-34.5, 61, -11]),
+    edgePoint(index, -1, INDEX.starts[0]),
+  ]);
+
+  const nailOf = (limb: Limb): NailPose => {
+    const bone = limb.last;
+    const r = radiusAt(limb, bone.from + bone.length * 0.6);
+    const scaleX = (1.55 * r) / 48;
+    const scaleY = (0.54 * bone.length + 8) / 122;
+    const origin = project(
+      add(
+        add(bone.start, scale(bone.direction, 0.5 * bone.length + 52 * scaleY)),
+        scale(bone.dorsal, r * 0.98),
+      ),
+    );
+    const across = direction(scale(cross(bone.direction, bone.dorsal), scaleX));
+    const along = direction(scale(bone.direction, -scaleY));
+
+    return {
+      a: across.x,
+      b: across.y,
+      c: along.x,
+      d: along.y,
+      e: origin.x,
+      f: origin.y,
+      angle: Math.atan2(-along.x, along.y) / DEG,
+      facing: direction(bone.dorsal).depth,
+    };
+  };
+
+  const nails: readonly NailPose[] = [thumb, index, middle, ring, pinky].map(
+    (limb) => nailOf(limb),
+  );
+
+  return { layers, body, details, nails };
 };
 
-// Thumb to little finger: the order the brush paints them in.
-const NAILS: readonly NailPose[] = [thumb, index, middle, ring, pinky].map(
-  (limb) => nailOf(limb),
-);
+// The hand as first served, at its resting yaw.
+const HAND = buildHand(VIEW.yaw);
 
 const nailTransform = ({ a, b, c, d, e, f }: NailPose) =>
   `matrix(${[a, b, c, d, e, f].map((value) => value.toFixed(3)).join(" ")})`;
@@ -580,14 +607,6 @@ const placePath = (path: string, nail: NailPose) => {
   return parts.out.join("");
 };
 
-export {
-  HAND_BODY,
-  HAND_DETAILS,
-  HAND_LAYERS,
-  nailPoint,
-  NAILS,
-  nailTransform,
-  placePath,
-};
+export { buildHand, HAND, nailPoint, nailTransform, placePath, VIEW };
 
-export type { NailPose };
+export type { Hand, NailPose };

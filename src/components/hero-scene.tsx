@@ -1,14 +1,13 @@
 "use client";
 
 import {
-  HAND_BODY,
-  HAND_DETAILS,
-  HAND_LAYERS,
+  buildHand,
+  HAND,
+  type Hand,
   nailPoint,
-  type NailPose,
-  NAILS,
   nailTransform,
   placePath,
+  VIEW,
 } from "@/components/hero-hand";
 import {
   ChromeGradient,
@@ -48,17 +47,69 @@ const ARCH = "M0 200A200 200 0 0 1 400 200V460Q400 500 360 500H40Q0 500 0 460Z";
 const ARCH_INNER =
   "M12 200A188 188 0 0 1 388 200V458Q388 488 358 488H42Q12 488 12 458Z";
 
+// The masks' extent: generous, so nothing is cut off as the hand turns.
+const MASK_AREA = { x: -60, y: -60, width: 520, height: 680 };
+
 const SPARKLES = [
   { x: 70, y: 180, size: 11 },
   { x: 330, y: 152, size: 15 },
   { x: 44, y: 400, size: 7 },
 ];
 
-const pose = (x: number, y: number, angle: number) =>
+// The hand turns slowly from side to side about its own yaw, so the fingers
+// overlap and foreshorten differently as it moves. It is re-projected every
+// frame, and brush poses are functions of the current hand: a pose on a nail
+// follows the nail round, a pose at the bottle stays put, and the brush is
+// tweened between them frame by frame so it keeps up mid-stroke.
+const TURN = { amplitude: 6, period: 14000 };
+
+interface Pose {
+  x: number;
+  y: number;
+  angle: number;
+}
+
+type PoseAt = (hand: Hand) => Pose;
+
+const atBottle =
+  (x: number, y: number, angle: number): PoseAt =>
+  () => ({ x, y, angle });
+
+// The brush is held much the same way for every nail, tilting a little
+// towards each one.
+const onNail =
+  (index: number, localY: number): PoseAt =>
+  (hand) => {
+    const nail = hand.nails[index];
+
+    if (!nail) return { x: 0, y: 0, angle: 0 };
+    const { x, y } = nailPoint(nail, 0, localY);
+
+    return { x, y, angle: 28 + nail.angle * 0.4 };
+  };
+
+const pose = ({ x, y, angle }: Pose) =>
   `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${angle.toFixed(1)}deg) scale(0.9)`;
 
-const BRUSH_IN_BOTTLE = pose(425, 490, 0);
-const BRUSH_ABOVE_BOTTLE = pose(425, 382, -12);
+const BRUSH_IN_BOTTLE = atBottle(425, 490, 0);
+const BRUSH_ABOVE_BOTTLE = atBottle(425, 382, -12);
+const BRUSH_HOME = pose(BRUSH_IN_BOTTLE(HAND));
+
+// The bristle head, tip at the origin and ferrule at y = -26. It is drawn
+// gathered to a soft point while travelling (spread 0) and splays out when it
+// is pressed onto a nail (spread 1), the way a loaded brush does.
+const n = (value: number) => value.toFixed(2);
+const bristleShape = (spread: number) => {
+  const tip = 1.2 + 6.3 * spread;
+  const belly = tip + 0.8;
+  const hair = tip * 0.55;
+
+  return {
+    head: `M-5.5-26C-5.5-16-${n(belly)}-6-${n(tip)}-1.6C-${n(tip * 0.7)}0.4 ${n(tip * 0.7)}0.4 ${n(tip)}-1.6C${n(belly)}-6 5.5-16 5.5-26Z`,
+    hairs: `M-2.6-24C-2.8-15-${n(hair + 0.3)}-8-${n(hair)}-2.6M0-24V-1.8M2.6-24C2.8-15 ${n(hair + 0.3)}-8 ${n(hair)}-2.6`,
+  };
+};
+const BRISTLES_GATHERED = bristleShape(0);
 
 const sleep = (milliseconds: number, signal: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
@@ -71,6 +122,37 @@ const sleep = (milliseconds: number, signal: AbortSignal) =>
       },
       { once: true },
     );
+  });
+
+const inOut = (u: number) =>
+  u < 0.5 ? 4 * u * u * u : 1 - (2 - 2 * u) ** 3 / 2;
+const easeIn = (u: number) => u * u;
+
+// Runs `step` with eased progress on every frame until `duration` is up.
+const tween = (
+  duration: number,
+  ease: (u: number) => number,
+  signal: AbortSignal,
+  step: (progress: number) => void,
+) =>
+  new Promise<void>((resolve, reject) => {
+    const start = performance.now();
+    const frame = (now: number) => {
+      if (signal.aborted) {
+        reject(new Error("aborted"));
+        return;
+      }
+      const u = Math.min((now - start) / duration, 1);
+
+      step(ease(u));
+      if (u < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        resolve();
+      }
+    };
+
+    requestAnimationFrame(frame);
   });
 
 const animateTo = async (
@@ -90,85 +172,243 @@ const animateTo = async (
   animation.cancel();
 };
 
+// The elements whose geometry is re-projected as the hand turns.
+interface LayerParts {
+  shape: SVGElement;
+  outline: SVGElement;
+  creases: SVGElement;
+}
+
 interface NailParts {
-  nail: NailPose;
+  frame: SVGElement;
+  rim: SVGElement;
+  cuticle: SVGElement;
   base: SVGElement;
   fresh: SVGElement;
   gloss: SVGElement;
 }
 
 interface SceneParts {
+  layers: LayerParts[];
+  body: SVGElement[];
+  web: SVGElement;
+  nails: NailParts[];
   brush: SVGElement;
+  // Carries the mask that hides the brush behind fingers nearer than the
+  // nail it is painting; the brush's own transform must not move the mask.
+  cover: SVGElement;
   bristles: SVGElement;
+  hairs: SVGElement;
+  // The sparkle at a freshly painted tip, and the wrapper that masks it
+  // behind nearer fingers the same way.
+  pop: SVGElement;
+  popCover: SVGElement;
   liquid: SVGElement;
   liquidGradient: SVGElement;
-  pop: SVGElement;
-  nails: NailParts[];
+}
+
+interface Scene extends SceneParts {
+  signal: AbortSignal;
+  // The hand as currently projected, updated every frame while the loop runs.
+  hand: { current: Hand };
+  // Where the brush was last sent, so the next move can start from there.
+  cursor: { at: PoseAt };
+  // How far the bristles are currently splayed, 0 gathered to 1 pressed.
+  spread: { current: number };
 }
 
 const findParts = (svg: SVGSVGElement): SceneParts | undefined => {
   const pick = (root: Element, selector: string) =>
     root.querySelector<SVGElement>(selector) ?? undefined;
-  const nails = NAILS.map((nail, index) => {
-    const group = svg.querySelector(`[data-nail="${String(index)}"]`);
-    const base = group && pick(group, "[data-base]");
-    const fresh = group && pick(group, "[data-fresh]");
-    const gloss = group && pick(group, "[data-gloss]");
+  const layers = HAND.layers
+    .map((layer) => {
+      const shape = pick(svg, `#hero-${layer.key}`);
+      const group = svg.querySelector(`[data-layer="${layer.key}"]`);
+      const outline = group && pick(group, "[data-outline]");
+      const creases = group && pick(group, "[data-creases]");
 
-    return base && fresh && gloss ? { nail, base, fresh, gloss } : undefined;
-  }).filter((nail) => nail !== undefined);
+      return shape && outline && creases ?
+          { shape, outline, creases }
+        : undefined;
+    })
+    .filter((layer) => layer !== undefined);
+  const body = [...svg.querySelectorAll<SVGElement>("[data-body]")];
+  const web = pick(svg, "[data-web]");
+  const nails = HAND.nails
+    .map((_, index) => {
+      const group = svg.querySelector(`[data-nail="${String(index)}"]`);
+      const frame = group && pick(group, "[data-frame]");
+      const rim = group && pick(group, "[data-rim]");
+      const cuticle = group && pick(group, "[data-cuticle]");
+      const base = group && pick(group, "[data-base]");
+      const fresh = group && pick(group, "[data-fresh]");
+      const gloss = group && pick(group, "[data-gloss]");
+
+      return frame && rim && cuticle && base && fresh && gloss ?
+          { frame, rim, cuticle, base, fresh, gloss }
+        : undefined;
+    })
+    .filter((nail) => nail !== undefined);
   const brush = pick(svg, "[data-brush]");
+  const cover = pick(svg, "[data-brush-cover]");
   const bristles = pick(svg, "[data-bristles]");
+  const hairs = pick(svg, "[data-hairs]");
   const liquid = pick(svg, "[data-liquid]");
   const liquidGradient = pick(svg, "[data-liquid-gradient]");
   const pop = pick(svg, "[data-pop]");
+  const popCover = pick(svg, "[data-pop-cover]");
 
   return (
-      brush &&
+      web &&
+        brush &&
+        cover &&
         bristles &&
+        hairs &&
         liquid &&
         liquidGradient &&
         pop &&
-        nails.length === NAILS.length
+        popCover &&
+        layers.length === HAND.layers.length &&
+        body.length === HAND.body.length &&
+        nails.length === HAND.nails.length
     ) ?
-      { brush, bristles, liquid, liquidGradient, pop, nails }
+      {
+        layers,
+        body,
+        web,
+        nails,
+        brush,
+        cover,
+        bristles,
+        hairs,
+        liquid,
+        liquidGradient,
+        pop,
+        popCover,
+      }
     : undefined;
 };
 
+// Writes a projected hand into the markup.
+const applyHand = (parts: SceneParts, hand: Hand) => {
+  for (const [index, layer] of hand.layers.entries()) {
+    const target = parts.layers[index];
+
+    if (target) {
+      target.shape.setAttribute("d", layer.shape);
+      target.outline.setAttribute("d", layer.outline);
+      target.creases.setAttribute("d", layer.details);
+    }
+  }
+  for (const [index, side] of hand.body.entries()) {
+    parts.body[index]?.setAttribute("d", side);
+  }
+  parts.web.setAttribute("d", hand.details);
+  for (const [index, nail] of hand.nails.entries()) {
+    const target = parts.nails[index];
+
+    if (target) {
+      target.frame.setAttribute("transform", nailTransform(nail));
+      target.rim.setAttribute("d", placePath(NAIL, nail));
+      target.cuticle.setAttribute("d", placePath(CUTICLE, nail));
+      target.gloss.setAttribute("d", placePath(GLOSS, nail));
+    }
+  }
+};
+
+const startTurning = (scene: Scene) => {
+  const start = performance.now();
+  const frame = (now: number) => {
+    if (scene.signal.aborted) return;
+    const yaw =
+      VIEW.yaw +
+      TURN.amplitude * Math.sin(((now - start) / TURN.period) * 2 * Math.PI);
+
+    scene.hand.current = buildHand(yaw);
+    applyHand(scene, scene.hand.current);
+    requestAnimationFrame(frame);
+  };
+
+  requestAnimationFrame(frame);
+};
+
+const moveBrush = async (
+  scene: Scene,
+  to: PoseAt,
+  duration: number,
+  ease = inOut,
+) => {
+  const from = scene.cursor.at;
+
+  scene.cursor.at = to;
+  await tween(duration, ease, scene.signal, (progress) => {
+    const a = from(scene.hand.current);
+    const b = to(scene.hand.current);
+    const mix = (p: number, q: number) => p + (q - p) * progress;
+
+    scene.brush.style.transform = pose({
+      x: mix(a.x, b.x),
+      y: mix(a.y, b.y),
+      angle: mix(a.angle, b.angle),
+    });
+  });
+};
+
+const spreadBrush = async (scene: Scene, to: number, duration: number) => {
+  const from = scene.spread.current;
+
+  await tween(duration, inOut, scene.signal, (progress) => {
+    scene.spread.current = from + (to - from) * progress;
+    const { head, hairs } = bristleShape(scene.spread.current);
+
+    scene.bristles.setAttribute("d", head);
+    scene.hairs.setAttribute("d", hairs);
+  });
+};
+
 const paintNail = async (
-  { brush, pop }: SceneParts,
-  { nail, base, fresh, gloss }: NailParts,
+  scene: Scene,
+  index: number,
+  { base, fresh, gloss }: NailParts,
   shade: string,
   approach: number,
 ) => {
-  const start = nailPoint(nail, 0, 50);
-  const end = nailPoint(nail, 0, -64);
-  const tip = nailPoint(nail, 0, -78);
-  // The brush is held much the same way for every nail, tilting a little
-  // towards each one.
-  const angle = 28 + nail.angle * 0.4;
-  const stroke = 640;
+  const stroke = 560;
 
-  await animateTo(
-    brush,
-    [{ transform: pose(start.x, start.y, angle) }],
-    approach,
-  );
+  if (index) {
+    scene.cover.setAttribute("mask", `url(#hero-nail-behind-${String(index)})`);
+  } else {
+    scene.cover.removeAttribute("mask");
+  }
+  await moveBrush(scene, onNail(index, 50), approach);
   fresh.style.fill = shade;
   await Promise.all([
-    animateTo(brush, [{ transform: pose(end.x, end.y, angle) }], stroke),
+    moveBrush(scene, onNail(index, -64), stroke),
     animateTo(fresh, [{ clipPath: COVERED }, { clipPath: UNCOVERED }], stroke),
+    spreadBrush(scene, 1, 160),
   ]);
   base.style.fill = shade;
   fresh.style.clipPath = COVERED;
+  // The bristles gather again as the brush lifts off towards the next nail.
+  void spreadBrush(scene, 0, 240);
 
   // Fire-and-forget flourishes: a glint on the fresh polish and a sparkle.
   gloss.animate([{ opacity: 1, offset: 0.4 }, { opacity: 0.75 }], {
     duration: 700,
     fill: "forwards",
   });
+  const tip = onNail(index, -78)(scene.hand.current);
   const at = `translate(${tip.x.toFixed(1)}px, ${tip.y.toFixed(1)}px)`;
-  pop.animate(
+
+  if (index) {
+    scene.popCover.setAttribute(
+      "mask",
+      `url(#hero-nail-behind-${String(index)})`,
+    );
+  } else {
+    scene.popCover.removeAttribute("mask");
+  }
+  scene.pop.animate(
     [
       { opacity: 0, transform: `${at} scale(0) rotate(0deg)` },
       { opacity: 1, transform: `${at} scale(1) rotate(90deg)`, offset: 0.4 },
@@ -178,51 +418,47 @@ const paintNail = async (
   );
 };
 
-const paintRound = async (
-  parts: SceneParts,
-  shade: string,
-  nextShade: string,
-  signal: AbortSignal,
-) => {
-  parts.bristles.style.fill = shade;
-  await animateTo(parts.brush, [{ transform: BRUSH_ABOVE_BOTTLE }], 500);
-  for (const [index, nail] of parts.nails.entries()) {
-    await paintNail(parts, nail, shade, index === 0 ? 650 : 380);
+const paintRound = async (scene: Scene, shade: string, nextShade: string) => {
+  scene.bristles.style.fill = shade;
+  await moveBrush(scene, BRUSH_ABOVE_BOTTLE, 450);
+  for (const [index, nail] of scene.nails.entries()) {
+    await paintNail(scene, index, nail, shade, index === 0 ? 580 : 340);
   }
-  await animateTo(parts.brush, [{ transform: BRUSH_ABOVE_BOTTLE }], 700);
-  await animateTo(
-    parts.brush,
-    [{ transform: BRUSH_IN_BOTTLE }],
-    420,
-    "ease-in",
-  );
+  // The brush keeps the last nail's mask on its way out, so it passes behind
+  // the nearer fingers; it is in the clear once it is back at the bottle.
+  await moveBrush(scene, BRUSH_ABOVE_BOTTLE, 620);
+  await moveBrush(scene, BRUSH_IN_BOTTLE, 380, easeIn);
+  scene.cover.removeAttribute("mask");
   if (isGradient(nextShade)) {
-    parts.liquidGradient.style.opacity = "1";
+    scene.liquidGradient.style.opacity = "1";
   } else {
-    parts.liquid.style.fill = nextShade;
-    parts.liquidGradient.style.opacity = "0";
+    scene.liquid.style.fill = nextShade;
+    scene.liquidGradient.style.opacity = "0";
   }
-  await sleep(1900, signal);
+  await sleep(1700, scene.signal);
 };
 
-const runLoop = async (parts: SceneParts, signal: AbortSignal) => {
+const runLoop = async (scene: Scene) => {
+  startTurning(scene);
+
   // Wait for the intro curtain (first visit) and the hand drawing in.
   const introSeen = document.documentElement.dataset.intro === "seen";
 
-  await sleep(introSeen ? 2800 : 5000, signal);
+  await sleep(introSeen ? 2800 : 5000, scene.signal);
   const state = { round: 0 };
 
-  while (!signal.aborted) {
+  while (!scene.signal.aborted) {
     const shade = SHADES[state.round % SHADES.length] ?? FIRST_SHADE;
     const nextShade = SHADES[(state.round + 1) % SHADES.length] ?? FIRST_SHADE;
 
-    await paintRound(parts, shade, nextShade, signal);
+    await paintRound(scene, shade, nextShade);
     state.round += 1;
   }
 };
 
 // Ref callback with cleanup (React 19): starts the loop on mount, stops it on
-// unmount. Reduced-motion visitors get the nails painted, without the loop.
+// unmount. Reduced-motion visitors get the nails painted, without the loop
+// or the turning.
 const startScene = (svg: SVGSVGElement | null) => {
   const parts = svg ? findParts(svg) : undefined;
 
@@ -237,8 +473,15 @@ const startScene = (svg: SVGSVGElement | null) => {
   }
 
   const controller = new AbortController();
+  const scene: Scene = {
+    ...parts,
+    signal: controller.signal,
+    hand: { current: HAND },
+    cursor: { at: BRUSH_IN_BOTTLE },
+    spread: { current: 0 },
+  };
 
-  runLoop(parts, controller.signal).catch(() => undefined);
+  runLoop(scene).catch(() => undefined);
 
   return () => {
     controller.abort();
@@ -269,27 +512,57 @@ const HeroScene = ({ className }: Readonly<{ className?: string }>) => (
       {/* Each digit's silhouette, and the masks that hide behind the nails
           and the digits nearer than a given one: mask n is for the nth
           nearest digit, and the last is for the hand itself. */}
-      {HAND_LAYERS.map((layer) => (
+      {HAND.layers.map((layer) => (
         <path key={layer.key} id={`hero-${layer.key}`} d={layer.shape} />
       ))}
-      <g id="hero-nails">
-        {NAILS.map((nail, index) => (
-          <path key={index} d={placePath(NAIL, nail)} />
-        ))}
-      </g>
-      {Array.from({ length: HAND_LAYERS.length + 1 }, (_, count) => (
+      {HAND.nails.map((nail, index) => (
+        <path
+          key={index}
+          id={`hero-nail-${String(index)}`}
+          d={placePath(NAIL, nail)}
+        />
+      ))}
+      {Array.from({ length: HAND.layers.length + 1 }, (_, count) => (
         <mask
           key={count}
           id={`hero-behind-${String(count)}`}
           maskUnits="userSpaceOnUse"
-          x="0"
-          y="0"
-          width="400"
-          height="500"
+          {...MASK_AREA}
         >
-          <rect width="400" height="500" fill="white" stroke="none" />
-          <use href="#hero-nails" fill="black" stroke="black" strokeWidth="1" />
-          {HAND_LAYERS.slice(0, count).map((layer) => (
+          <rect {...MASK_AREA} fill="white" stroke="none" />
+          {/* A finger's outline stops at its own nail and at the nails of
+              nearer fingers; a farther finger's nail lies behind it. */}
+          {HAND.nails.slice(0, count + 1).map((_, index) => (
+            <use
+              key={index}
+              href={`#hero-nail-${String(index)}`}
+              fill="black"
+              stroke="black"
+              strokeWidth="1"
+            />
+          ))}
+          {HAND.layers.slice(0, count).map((layer) => (
+            <use
+              key={layer.key}
+              href={`#hero-${layer.key}`}
+              fill="black"
+              stroke="none"
+            />
+          ))}
+        </mask>
+      ))}
+      {/* The same without the nails, for the nails themselves and for the
+          brush painting them: both are hidden where a nearer finger covers
+          them. */}
+      {HAND.layers.slice(1).map((_, index) => (
+        <mask
+          key={index}
+          id={`hero-nail-behind-${String(index + 1)}`}
+          maskUnits="userSpaceOnUse"
+          {...MASK_AREA}
+        >
+          <rect {...MASK_AREA} fill="white" stroke="none" />
+          {HAND.layers.slice(0, index + 1).map((layer) => (
             <use
               key={layer.key}
               href={`#hero-${layer.key}`}
@@ -321,89 +594,112 @@ const HeroScene = ({ className }: Readonly<{ className?: string }>) => (
 
     <g clipPath="url(#hero-arch-clip)">
       <rect width="400" height="500" fill="url(#hero-glow)" stroke="none" />
-      <g mask={`url(#hero-behind-${String(HAND_LAYERS.length)})`}>
-        {HAND_BODY.map((side, index) => (
-          <path
-            key={index}
-            d={side}
-            pathLength={1}
-            strokeWidth="1.5"
-            className="nail-draw"
-            style={{ ...delay(0), animationDuration: "1.6s" }}
-          />
-        ))}
-        <path
-          d={HAND_DETAILS}
-          pathLength={1}
-          strokeWidth="1.2"
-          opacity="0.7"
-          className="nail-draw"
-          style={delay(1.3)}
-        />
-      </g>
-      {HAND_LAYERS.map((layer, index) => (
-        <g key={layer.key} mask={`url(#hero-behind-${String(index)})`}>
-          <path
-            d={layer.outline}
-            pathLength={1}
-            strokeWidth="1.5"
-            className="nail-draw"
-            style={{
-              ...delay(0.5 + (HAND_LAYERS.length - index) * 0.15),
-              animationDuration: "1.2s",
-            }}
-          />
-          <path
-            d={layer.details}
-            pathLength={1}
-            strokeWidth="0.9"
-            opacity="0.4"
-            className="nail-draw"
-            style={{ ...delay(1.9), animationDuration: "0.8s" }}
-          />
-        </g>
-      )).toReversed()}
-      {NAILS.map((nail, index) => (
-        <g key={index} data-nail={index}>
-          <g
-            transform={nailTransform(nail)}
-            clipPath="url(#hero-nail-clip)"
-            stroke="none"
-          >
-            <rect
-              data-base
-              x="-30"
-              y="-75"
-              width="60"
-              height="140"
-              className="fill-pearl/15"
+      <g>
+        <g mask={`url(#hero-behind-${String(HAND.layers.length)})`}>
+          {HAND.body.map((side, index) => (
+            <path
+              key={index}
+              data-body
+              d={side}
+              pathLength={1}
+              strokeWidth="1.5"
+              className="nail-draw"
+              style={{ ...delay(0), animationDuration: "1.6s" }}
             />
-            <rect
-              data-fresh
-              x="-30"
-              y="-75"
-              width="60"
-              height="140"
-              style={{ clipPath: COVERED }}
-            />
-          </g>
+          ))}
           <path
-            d={placePath(NAIL, nail)}
+            data-web
+            d={HAND.details}
             pathLength={1}
             strokeWidth="1.2"
+            opacity="0.7"
             className="nail-draw"
-            style={delay(1.5 + index * 0.1)}
-          />
-          <path d={placePath(CUTICLE, nail)} strokeWidth="0.7" opacity="0.5" />
-          <path
-            data-gloss
-            d={placePath(GLOSS, nail)}
-            strokeWidth="1.4"
-            className="stroke-white"
-            style={{ opacity: 0.15 }}
+            style={delay(1.3)}
           />
         </g>
-      ))}
+        {HAND.layers
+          .map((layer, index) => (
+            <g
+              key={layer.key}
+              data-layer={layer.key}
+              mask={`url(#hero-behind-${String(index)})`}
+            >
+              <path
+                data-outline
+                d={layer.outline}
+                pathLength={1}
+                strokeWidth="1.5"
+                className="nail-draw"
+                style={{
+                  ...delay(0.5 + (HAND.layers.length - index) * 0.15),
+                  animationDuration: "1.2s",
+                }}
+              />
+              <path
+                data-creases
+                d={layer.details}
+                pathLength={1}
+                strokeWidth="0.9"
+                opacity="0.4"
+                className="nail-draw"
+                style={{ ...delay(1.9), animationDuration: "0.8s" }}
+              />
+            </g>
+          ))
+          .toReversed()}
+        {HAND.nails.map((nail, index) => (
+          <g
+            key={index}
+            data-nail={index}
+            mask={index ? `url(#hero-nail-behind-${String(index)})` : undefined}
+          >
+            <g
+              data-frame
+              transform={nailTransform(nail)}
+              clipPath="url(#hero-nail-clip)"
+              stroke="none"
+            >
+              <rect
+                data-base
+                x="-30"
+                y="-75"
+                width="60"
+                height="140"
+                className="fill-pearl/15"
+              />
+              <rect
+                data-fresh
+                x="-30"
+                y="-75"
+                width="60"
+                height="140"
+                style={{ clipPath: COVERED }}
+              />
+            </g>
+            <path
+              data-rim
+              d={placePath(NAIL, nail)}
+              pathLength={1}
+              strokeWidth="1.2"
+              className="nail-draw"
+              style={delay(1.5 + index * 0.1)}
+            />
+            <path
+              data-cuticle
+              d={placePath(CUTICLE, nail)}
+              strokeWidth="0.7"
+              opacity="0.5"
+            />
+            <path
+              data-gloss
+              d={placePath(GLOSS, nail)}
+              strokeWidth="1.4"
+              className="stroke-white"
+              style={{ opacity: 0.15 }}
+            />
+          </g>
+        ))}
+      </g>
     </g>
 
     {SPARKLES.map(({ x, y, size }, index) => (
@@ -415,40 +711,51 @@ const HeroScene = ({ className }: Readonly<{ className?: string }>) => (
         style={delay(1.2 + index * 0.15)}
       />
     ))}
-    <path
-      data-pop
-      d={sparklePath(0, 0, 10)}
-      stroke="none"
-      className="fill-rose-soft"
-      style={{ opacity: 0 }}
-    />
-
-    {/* The brush: bristles tip at the origin, handle (the bottle cap) above. */}
-    <g data-brush style={{ transform: BRUSH_IN_BOTTLE }}>
+    <g data-pop-cover>
       <path
-        data-bristles
-        d="M-5.5-26C-5.5-12-3-3 0 0C3-3 5.5-12 5.5-26Z"
-        stroke="none"
-        style={{ fill: FIRST_SHADE }}
-      />
-      <rect
-        x="-2"
-        y="-58"
-        width="4"
-        height="33"
+        data-pop
+        d={sparklePath(0, 0, 10)}
         stroke="none"
         className="fill-rose-soft"
+        style={{ opacity: 0 }}
       />
-      <rect
-        x="-10"
-        y="-112"
-        width="20"
-        height="56"
-        rx="4"
-        strokeWidth="1.5"
-        className="fill-burgundy-deep"
-      />
-      <path d="M-5-104V-66" strokeWidth="2" className="stroke-white/35" />
+    </g>
+
+    {/* The brush: bristles tip at the origin, handle (the bottle cap) above. */}
+    <g data-brush-cover>
+      <g data-brush style={{ transform: BRUSH_HOME }}>
+        <path
+          data-bristles
+          d={BRISTLES_GATHERED.head}
+          stroke="none"
+          style={{ fill: FIRST_SHADE }}
+        />
+        <path
+          data-hairs
+          d={BRISTLES_GATHERED.hairs}
+          strokeWidth="0.8"
+          strokeLinecap="round"
+          className="stroke-white/25"
+        />
+        <rect
+          x="-2"
+          y="-58"
+          width="4"
+          height="33"
+          stroke="none"
+          className="fill-rose-soft"
+        />
+        <rect
+          x="-10"
+          y="-112"
+          width="20"
+          height="56"
+          rx="4"
+          strokeWidth="1.5"
+          className="fill-burgundy-deep"
+        />
+        <path d="M-5-104V-66" strokeWidth="2" className="stroke-white/35" />
+      </g>
     </g>
 
     {/* The bottle, drawn over the brush so it hides the bristles when capped. */}
