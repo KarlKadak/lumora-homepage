@@ -10,7 +10,7 @@ import {
 } from "@/content/dictionary";
 
 const MAP_SOURCE =
-  "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d151614.12249171216!2d24.60637007581068!3d59.48269761665056!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x469294b4763fb4c7%3A0x500b36d18fc70f0!2sKesklinn%2C%20Tallinn!5e1!3m2!1sen!2see!4v1791322144284!5m2!1sen!2see";
+  "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d151614.12249171216!2d24.60637007581068!3d59.48269761665056!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x469294b4763fb4c7%3A0x500b36d18fc70f0!2sKesklinn%2C%20Tallinn!5e0!3m2!1sen!2see!4v1791322144284!5m2!1sen!2see";
 
 // Display and padding are left out so callers can vary them without clashes.
 const roseButtonBase =
@@ -478,9 +478,9 @@ const Visit = ({ visit }: Readonly<{ visit: Dictionary["visit"] }>) => {
         <div className="reveal relative mr-3 mb-3">
           <div
             aria-hidden="true"
-            className="absolute inset-0 translate-x-3 translate-y-3 rounded-[2rem] border border-rose"
+            className="absolute inset-0 translate-x-3 translate-y-3 rounded-3xl rounded-tl-lg border border-rose"
           />
-          <div className="relative overflow-hidden rounded-[2rem] bg-burgundy-deep">
+          <div className="relative overflow-hidden rounded-3xl rounded-tl-lg bg-burgundy-deep">
             <iframe
               src={MAP_SOURCE}
               title={visit.mapTitle}
