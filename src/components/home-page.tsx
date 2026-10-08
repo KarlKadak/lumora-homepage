@@ -482,9 +482,9 @@ const Visit = ({ visit }: Readonly<{ visit: Dictionary["visit"] }>) => {
         <div className="reveal relative mr-3 mb-3">
           <div
             aria-hidden="true"
-            className="absolute inset-0 translate-x-3 translate-y-3 rounded-3xl rounded-tl-lg border border-rose"
+            className="absolute inset-0 translate-x-3 translate-y-3 rounded-lg border border-rose"
           />
-          <div className="relative overflow-hidden rounded-3xl rounded-tl-lg bg-burgundy-deep">
+          <div className="relative overflow-hidden rounded-lg bg-burgundy-deep">
             <iframe
               src={MAP_SOURCE}
               title={visit.mapTitle}
