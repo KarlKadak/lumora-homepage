@@ -18,6 +18,7 @@ import {
   sparklePath,
 } from "@/components/nail-art";
 import {
+  CLASSIC_FINISHES,
   type Finish,
   FINISHES,
   FinishSwatch,
@@ -33,7 +34,8 @@ import type { Picker } from "@/content/dictionary";
 // with the bottle capped; the loop is driven by the Web Animations API once
 // mounted. The finishes it cycles through live in nail-finishes.tsx.
 
-const FIRST_FINISH: Finish = FINISHES[0] ?? {
+// The loop opens on the classic shades, so the first of those paints first.
+const FIRST_FINISH: Finish = CLASSIC_FINISHES[0] ?? {
   name: "rose",
   paint: "var(--color-rose)",
 };
@@ -216,13 +218,18 @@ interface SceneParts {
   liquidDecor: readonly [SVGElement, SVGElement];
 }
 
-// What the loop should be doing: dealing finishes at random, or holding the
-// visitor's pick. A pick or a restart interrupts the round in progress.
+// The self-running modes: the classic shades in their original order, or the
+// whole catalogue shuffled.
+type Cycle = "classic" | "random";
+
+// What the loop should be doing: cycling through finishes by itself, or
+// holding the visitor's pick. A pick or a restart interrupts the round in
+// progress.
 interface Director {
-  mode: "random" | "picked";
+  mode: Cycle | "picked";
   // A finish the visitor asked for, painted next.
   request: Finish | undefined;
-  // The order dealt for random mode and how far along it the loop is.
+  // The order dealt for a cycling mode and how far along it the loop is.
   order: readonly Finish[];
   index: number;
   // Aborts the round in progress.
@@ -600,8 +607,9 @@ const runRound = async (scene: Scene) => {
     await recover(scene);
   }
   const request = director.request;
+  const cycling = director.mode !== "picked";
   const dealt =
-    director.mode === "random" ?
+    cycling ?
       director.order[director.index % director.order.length]
     : undefined;
   const finish = request ?? dealt;
@@ -620,12 +628,12 @@ const runRound = async (scene: Scene) => {
   // The close-up is for a chosen finish; the loop plays zoomed out.
   void zoomTo(scene, director.mode === "picked" ? 1 : 0);
   const next =
-    director.mode === "random" ?
+    cycling ?
       (director.order[(director.index + 1) % director.order.length] ?? finish)
     : finish;
 
   await paintRound(scene, finish, next);
-  if (!request && director.mode === "random") director.index += 1;
+  if (!request && cycling) director.index += 1;
 };
 
 const runLoop = async (scene: Scene) => {
@@ -647,10 +655,15 @@ const runLoop = async (scene: Scene) => {
   }
 };
 
+// The order a cycling mode deals: the classics as they always were, or the
+// catalogue in a fresh shuffle.
+const dealOrder = (cycle: Cycle): readonly Finish[] =>
+  cycle === "classic" ? CLASSIC_FINISHES : shuffled(FINISHES);
+
 // What the picker can ask of a running scene.
 interface SceneControl {
   pick: (finish: Finish) => void;
-  random: () => void;
+  cycle: (cycle: Cycle) => void;
 }
 
 const control = (scene: Scene): SceneControl => ({
@@ -660,10 +673,10 @@ const control = (scene: Scene): SceneControl => ({
     scene.director.round.abort();
     scene.director.wake();
   },
-  random: () => {
-    scene.director.mode = "random";
+  cycle: (cycle) => {
+    scene.director.mode = cycle;
     scene.director.request = undefined;
-    scene.director.order = shuffled(FINISHES);
+    scene.director.order = dealOrder(cycle);
     scene.director.index = 0;
     scene.director.round.abort();
     scene.director.wake();
@@ -688,7 +701,7 @@ const startScene = (
           paintAtOnce(parts, finish);
           fillBottle(parts, finish);
         },
-        random: () => {
+        cycle: () => {
           paintAtOnce(parts, FIRST_FINISH);
           fillBottle(parts, FIRST_FINISH);
         },
@@ -708,10 +721,10 @@ const startScene = (
     spread: { current: 0 },
     zoom: { current: 0, target: 0 },
     director: {
-      mode: "random",
+      // Every visit opens on the classic shades, in their original order.
+      mode: "classic",
       request: undefined,
-      // The opening finish always comes first; the rest are dealt at random.
-      order: [FIRST_FINISH, ...shuffled(FINISHES.slice(1))],
+      order: dealOrder("classic"),
       index: 0,
       round,
       wake: () => undefined,
@@ -746,22 +759,51 @@ const BOTTLE_AREA = {
 const swatchButton =
   "relative flex w-full cursor-pointer flex-col items-center gap-2 rounded-2xl p-2 pt-3 transition-colors hover:bg-white focus-visible:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose";
 
-// The random option's tile: a nail in every colour at once.
+// The cycling options' tiles: the classic chrome for the original shades, and
+// a nail in every colour at once for random.
+const CLASSIC_SWATCH: Finish = {
+  name: "classic",
+  paint: "url(#hero-paint-chrome)",
+};
 const RANDOM_SWATCH: Finish = {
   name: "random",
   paint: "url(#hero-paint-holo)",
 };
 
+// A tile that hands the brush back to a self-running mode.
+const CycleTile = ({
+  swatch,
+  label,
+  onCycle,
+}: Readonly<{ swatch: Finish; label: string; onCycle: () => void }>) => (
+  <li>
+    <button type="button" onClick={onCycle} className={swatchButton}>
+      <span className="relative">
+        <FinishSwatch finish={swatch} className="h-16 text-burgundy" />
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 flex items-center justify-center pt-3 font-serif text-2xl font-medium text-burgundy-deep italic"
+        >
+          ?
+        </span>
+      </span>
+      <span className="text-center text-[0.65rem] leading-tight font-semibold tracking-wide">
+        {label}
+      </span>
+    </button>
+  </li>
+);
+
 const PickerDialog = ({
   picker,
   dialogRef,
   onPick,
-  onRandom,
+  onCycle,
 }: Readonly<{
   picker: Picker;
   dialogRef: React.RefObject<HTMLDialogElement | null>;
   onPick: (finish: Finish) => void;
-  onRandom: () => void;
+  onCycle: (cycle: Cycle) => void;
 }>) => {
   const titleId = useId();
   const close = () => dialogRef.current?.close();
@@ -798,32 +840,22 @@ const PickerDialog = ({
         </button>
       </div>
       <ul className="mt-6 grid grid-cols-4 gap-2 sm:grid-cols-6 sm:gap-3">
-        <li>
-          <button
-            type="button"
-            onClick={() => {
-              onRandom();
-              close();
-            }}
-            className={swatchButton}
-          >
-            <span className="relative">
-              <FinishSwatch
-                finish={RANDOM_SWATCH}
-                className="h-16 text-burgundy"
-              />
-              <span
-                aria-hidden="true"
-                className="absolute inset-0 flex items-center justify-center pt-3 font-serif text-2xl font-medium text-burgundy-deep italic"
-              >
-                ?
-              </span>
-            </span>
-            <span className="text-center text-[0.65rem] leading-tight font-semibold tracking-wide">
-              {picker.random}
-            </span>
-          </button>
-        </li>
+        <CycleTile
+          swatch={CLASSIC_SWATCH}
+          label={picker.classic}
+          onCycle={() => {
+            onCycle("classic");
+            close();
+          }}
+        />
+        <CycleTile
+          swatch={RANDOM_SWATCH}
+          label={picker.random}
+          onCycle={() => {
+            onCycle("random");
+            close();
+          }}
+        />
         {FINISHES.map((finish) => (
           <li key={finish.name}>
             <button
@@ -905,7 +937,7 @@ const HeroScene = ({
         picker={picker}
         dialogRef={dialogReference}
         onPick={(finish) => sceneControl.current?.pick(finish)}
-        onRandom={() => sceneControl.current?.random()}
+        onCycle={(cycle) => sceneControl.current?.cycle(cycle)}
       />
     </div>
   );

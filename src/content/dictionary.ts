@@ -20,6 +20,7 @@ interface Picker {
   title: string;
   text: string;
   random: string;
+  classic: string;
   close: string;
   newLabel: string;
   names: Record<string, string>;
@@ -104,8 +105,9 @@ const et: Dictionary = {
     picker: {
       hint: "Klõpsa pudelil ja vali värv",
       title: "Vali värv",
-      text: "Küüned maalitakse sinu valitud tooniga. Juhuslik valik laseb pintslil ise edasi toimetada.",
+      text: "Küüned maalitakse sinu valitud tooniga. Klassika ja juhuslik valik lasevad pintslil ise edasi toimetada.",
       random: "Juhuslik",
+      classic: "Klassika",
       close: "Sulge",
       newLabel: "Uus",
       names: {
@@ -132,6 +134,7 @@ const et: Dictionary = {
         aurora: "Virmalised",
         "half-moon": "Poolkuu",
         "rose-soft": "Õrn roos",
+        plum: "Ploom",
         galaxy: "Galaktika",
         "gold-foil": "Kuldleht",
         holo: "Holo",
@@ -259,8 +262,9 @@ const en: Dictionary = {
     picker: {
       hint: "Click the bottle to pick a colour",
       title: "Pick a colour",
-      text: "The nails are painted in the shade you choose. Random lets the brush carry on by itself.",
+      text: "The nails are painted in the shade you choose. Classic and Random let the brush carry on by itself.",
       random: "Random",
+      classic: "Classic",
       close: "Close",
       newLabel: "New",
       names: {
@@ -287,6 +291,7 @@ const en: Dictionary = {
         aurora: "Aurora",
         "half-moon": "Half moon",
         "rose-soft": "Soft rose",
+        plum: "Plum",
         galaxy: "Galaxy",
         "gold-foil": "Gold foil",
         holo: "Holo",

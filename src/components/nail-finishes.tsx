@@ -16,7 +16,7 @@ interface Finish {
 
 const gradient = (id: string) => `url(#hero-paint-${id})`;
 
-// The first finish opens every visit; the rest follow in a random order.
+// The whole catalogue, shuffled for the random option and listed in the picker.
 const FINISHES: readonly Finish[] = [
   { name: "halloween", paint: "#f07b2a", decor: "halloween", isNew: true },
   {
@@ -47,6 +47,7 @@ const FINISHES: readonly Finish[] = [
   { name: "aurora", paint: gradient("aurora") },
   { name: "half-moon", paint: "var(--color-burgundy)", decor: "half-moon" },
   { name: "rose-soft", paint: "var(--color-rose-soft)" },
+  { name: "plum", paint: "var(--color-plum)" },
   { name: "galaxy", paint: gradient("galaxy"), decor: "stars" },
   { name: "gold-foil", paint: "#2c1a2e", decor: "foil" },
   { name: "holo", paint: gradient("holo") },
@@ -55,6 +56,19 @@ const FINISHES: readonly Finish[] = [
   { name: "stripes", paint: "#fff2ef", decor: "stripes" },
   { name: "pearl", paint: "var(--color-pearl)" },
 ];
+
+const byName = (name: string): Finish =>
+  FINISHES.find((finish) => finish.name === name) ?? { name, paint: "none" };
+
+// The shades the hero opened with before the catalogue grew, in the order the
+// loop originally dealt them. The classic option cycles through these alone.
+const CLASSIC_FINISHES: readonly Finish[] = [
+  "rose",
+  "chrome",
+  "rose-soft",
+  "plum",
+  "pearl",
+].map(byName);
 
 const isGradient = (paint: string) => paint.startsWith("url(");
 
@@ -345,6 +359,6 @@ const HeroFinishDefs = () => (
   </>
 );
 
-export { FINISHES, FinishSwatch, HeroFinishDefs, isGradient };
+export { CLASSIC_FINISHES, FINISHES, FinishSwatch, HeroFinishDefs, isGradient };
 
 export type { Finish };
