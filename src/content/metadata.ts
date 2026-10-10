@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import type { Locale } from "@/content/dictionary";
+import type { Locale, Page } from "@/content/dictionary";
 import {
   getDictionary,
-  localePath,
+  localePagePath,
   LOCALES,
   localeUrl,
   SITE_NAME,
@@ -15,20 +15,22 @@ const OG_LOCALE: Record<Locale, string> = { et: "et_EE", en: "en_GB" };
 // Estonian is the default for visitors whose language we do not serve.
 const DEFAULT_LOCALE: Locale = "et";
 
-const languageAlternates = (): Record<string, string> => {
+const languageAlternates = (page: Page): Record<string, string> => {
   const entries: [string, string][] = LOCALES.map((locale) => [
     locale,
-    localePath(locale),
+    localePagePath(locale, page),
   ]);
 
   return Object.fromEntries([
     ...entries,
-    ["x-default", localePath(DEFAULT_LOCALE)],
+    ["x-default", localePagePath(DEFAULT_LOCALE, page)],
   ]);
 };
 
-const buildMetadata = (locale: Locale): Metadata => {
-  const { meta } = getDictionary(locale);
+// The designer shares the home page's share card.
+const buildMetadata = (locale: Locale, page: Page = "home"): Metadata => {
+  const dictionary = getDictionary(locale);
+  const meta = page === "home" ? dictionary.meta : dictionary.designer.meta;
   const image = `/og-${locale}.png`;
 
   return {
@@ -37,8 +39,8 @@ const buildMetadata = (locale: Locale): Metadata => {
     description: meta.description,
     applicationName: SITE_NAME,
     alternates: {
-      canonical: localePath(locale),
-      languages: languageAlternates(),
+      canonical: localePagePath(locale, page),
+      languages: languageAlternates(page),
     },
     openGraph: {
       type: "website",
@@ -47,16 +49,18 @@ const buildMetadata = (locale: Locale): Metadata => {
       alternateLocale: LOCALES.filter((other) => other !== locale).map(
         (other) => OG_LOCALE[other],
       ),
-      url: localeUrl(locale),
+      url: localeUrl(locale, page),
       title: meta.title,
       description: meta.description,
-      images: [{ url: image, width: 1200, height: 630, alt: meta.ogAlt }],
+      images: [
+        { url: image, width: 1200, height: 630, alt: dictionary.meta.ogAlt },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title: meta.title,
       description: meta.description,
-      images: [{ url: image, alt: meta.ogAlt }],
+      images: [{ url: image, alt: dictionary.meta.ogAlt }],
     },
     robots: { index: true, follow: true },
   };

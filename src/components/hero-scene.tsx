@@ -2,14 +2,12 @@
 
 import { useCallback, useId, useRef, useState } from "react";
 import {
-  buildHand,
-  HAND,
   type Hand,
   nailPoint,
   nailTransform,
   placePath,
-  VIEW,
-} from "@/components/hero-hand";
+} from "@/components/hand-model";
+import { buildHand, HAND, VIEW } from "@/components/hero-hand";
 import {
   CUTICLE,
   delay,

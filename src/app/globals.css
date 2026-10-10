@@ -175,8 +175,82 @@ body {
   .sparkle,
   .rise,
   .reveal,
+  .element-pop,
   .animate-marquee,
   .animate-spin-slow {
     animation: none;
   }
+}
+
+/* A placed element pops onto the nail. */
+.element-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: element-pop 0.35s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+
+@keyframes element-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+/* The designer's sliders: a rose track and a thumb big enough for a finger. */
+.level-slider {
+  appearance: none;
+  height: 2.75rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.level-slider::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-rose) 45%, transparent);
+}
+
+.level-slider::-moz-range-track {
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-rose) 45%, transparent);
+}
+
+.level-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: calc(-0.75rem + 1px);
+  border-radius: 50%;
+  border: 3px solid var(--color-pearl);
+  background: var(--color-rose);
+  box-shadow: 0 1px 4px rgb(42 5 16 / 0.35);
+  transition: transform 0.15s ease-out;
+}
+
+.level-slider:active::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+
+.level-slider::-moz-range-thumb {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 3px solid var(--color-pearl);
+  background: var(--color-rose);
+  box-shadow: 0 1px 4px rgb(42 5 16 / 0.35);
+}
+
+.level-slider:focus-visible {
+  outline: none;
+}
+
+.level-slider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--color-burgundy);
+  outline-offset: 2px;
+}
+
+.level-slider:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--color-burgundy);
+  outline-offset: 2px;
 }

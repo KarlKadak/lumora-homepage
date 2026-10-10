@@ -26,12 +26,117 @@ interface Picker {
   names: Record<string, string>;
 }
 
+// Copy for the nail designer page.
+interface DesignerCopy {
+  meta: { title: string; description: string };
+  title: string;
+  // One sentence per line.
+  lead: string[];
+  hands: {
+    right: string;
+    left: string;
+    both: string;
+    copyOther: string;
+    hint: string;
+    formHint: string;
+    label: string;
+  };
+  toolbar: {
+    leftHand: string;
+    hideMenu: string;
+    showMenu: string;
+    menu: string;
+    undo: string;
+    redo: string;
+    reset: string;
+    resetConfirm: string;
+    confirm: string;
+    cancel: string;
+    download: string;
+    share: string;
+    copyLink: string;
+    linkCopied: string;
+    randomAll: string;
+    random: string;
+  };
+  panels: {
+    length: string;
+    shape: string;
+    sharpness: string;
+    color: string;
+    design: string;
+  };
+  presets: Record<Preset, string>;
+  levelText: string;
+  color: {
+    custom: string;
+    recent: string;
+    finishes: string;
+    polishes: string;
+    applied: string;
+    names: Record<string, string>;
+  };
+  design: {
+    addElement: string;
+    layers: string;
+    patterns: string;
+    illustrations: string;
+    stones: string;
+    selected: string;
+    size: string;
+    rotation: string;
+    offset: string;
+    color: string;
+    color2: string;
+    flip: string;
+    duplicate: string;
+    forward: string;
+    back: string;
+    delete: string;
+    allNails: string;
+    onlyThis: string;
+    applyTo: string;
+    done: string;
+    empty: string;
+    pick: string;
+    fingerStrip: string;
+    elementLabel: string;
+    elementHint: string;
+  };
+  fingers: Record<FingerName, string>;
+  elements: Record<string, string>;
+  stoneColors: Record<string, string>;
+  export: {
+    length: string;
+    caption: string;
+    failed: string;
+    working: string;
+    fileName: string;
+  };
+  nailButton: string;
+  live: { length: string; shape: string; sharpness: string };
+}
+
+type FingerName = "thumb" | "index" | "middle" | "ring" | "pinky";
+
+type Preset =
+  | "stiletto"
+  | "softStiletto"
+  | "almond"
+  | "coffin"
+  | "softCoffin"
+  | "oval"
+  | "square"
+  | "squoval"
+  | "round";
+
 interface Dictionary {
   meta: { title: string; description: string; ogAlt: string };
   nav: {
     instagram: string;
     time: string;
     faq: string;
+    designer: string;
     contact: string;
     switchLabel: string;
     dockLabel: string;
@@ -71,6 +176,7 @@ interface Dictionary {
     mapTitle: string;
   };
   footer: { tagline: string; rights: string };
+  designer: DesignerCopy;
 }
 
 const SITE_URL = "https://lumorabeauty.ee";
@@ -90,6 +196,7 @@ const et: Dictionary = {
     instagram: "Instagram",
     time: "Sinu aeg",
     faq: "KKK",
+    designer: "Kujunda",
     contact: "Võta ühendust",
     switchLabel: "Switch to English",
     dockLabel: "Kiirlingid",
@@ -234,6 +341,188 @@ const et: Dictionary = {
     tagline: "Küünesalong Tallinnas.",
     rights: "Kõik õigused kaitstud.",
   },
+  designer: {
+    meta: {
+      title: "Kujunda oma küüned enne külastust | Lumora Nail Lounge",
+      description:
+        "Pane enne külastust kokku oma unistuste küünekomplekt: pikkus, kuju, värv ja kaunistused. Laadi pilt alla ja võta see salongi kaasa.",
+    },
+    title: "Kujunda oma küüned",
+    lead: [
+      "Vali pikkus, kuju ja värv, lisa mustrid ja kivikesed ning laadi tulemus pildina alla.",
+      "Võta see külastusele kaasa.",
+    ],
+    hands: {
+      right: "Parem",
+      left: "Vasak",
+      both: "Mõlemad",
+      copyOther: "Kopeeri teiselt käelt",
+      hint: "Muudatused rakenduvad selle käe kõigile viiele küünele.",
+      formHint: "Pikkus, kuju ja teravus on mõlemal käel ühesugused.",
+      label: "Käsi",
+    },
+    toolbar: {
+      leftHand: "Vasak käsi",
+      hideMenu: "Peida menüü",
+      showMenu: "Näita menüüd",
+      menu: "Menüü",
+      undo: "Võta tagasi",
+      redo: "Tee uuesti",
+      reset: "Alusta uuesti",
+      resetConfirm: "Kustutada kogu kujundus ja alustada tühjalt?",
+      confirm: "Kustuta",
+      cancel: "Loobu",
+      download: "Laadi alla",
+      share: "Jaga",
+      copyLink: "Kopeeri link",
+      linkCopied: "Link kopeeritud",
+      randomAll: "Üllata mind",
+      random: "Juhuslik",
+    },
+    panels: {
+      length: "Pikkus",
+      shape: "Kuju",
+      sharpness: "Teravus",
+      color: "Värv",
+      design: "Kujundus",
+    },
+    presets: {
+      stiletto: "Stiletto",
+      softStiletto: "Pehme stiletto",
+      almond: "Mandel",
+      coffin: "Kirst",
+      softCoffin: "Pehme kirst",
+      oval: "Ovaal",
+      square: "Kandiline",
+      squoval: "Squoval",
+      round: "Ümar",
+    },
+    levelText: "{value} / 5, {name}",
+    color: {
+      custom: "Oma värv",
+      recent: "Viimased",
+      finishes: "Eriefektid",
+      polishes: "Lakid",
+      applied: "Värv {name} rakendatud",
+      names: {
+        rose: "Roos",
+        "rose-soft": "Õrn roos",
+        burgundy: "Burgundia",
+        plum: "Ploom",
+        pearl: "Pärl",
+        cherry: "Kirss",
+        nude: "Nude",
+        ink: "Tint",
+        lavender: "Lavendel",
+        sage: "Salvei",
+        coral: "Korall",
+        milk: "Piim",
+        chrome: "Kroom",
+        holo: "Holo",
+        "cat-eye": "Kassisilm",
+        aurora: "Virmalised",
+        galaxy: "Galaktika",
+        ombre: "Ombré",
+        sunset: "Loojang",
+        candy: "Komm",
+        ocean: "Ookean",
+      },
+    },
+    design: {
+      addElement: "Lisa element",
+      layers: "Küünel olevad elemendid",
+      patterns: "Mustrid",
+      illustrations: "Pildid",
+      stones: "Kivid",
+      selected: "Valitud element",
+      size: "Suurus",
+      rotation: "Pööre",
+      offset: "Asend",
+      color: "Värv",
+      color2: "Teine värv",
+      flip: "Peegelda",
+      duplicate: "Paljunda",
+      forward: "Ettepoole",
+      back: "Tahapoole",
+      delete: "Kustuta",
+      allNails: "Kõik küüned",
+      onlyThis: "Ainult see küüs",
+      applyTo: "Rakenda",
+      done: "Valmis",
+      empty: "Sellel küünel pole veel elemente. Lisa muster, pilt või kivi.",
+      pick: "Vali element küünelt või loendist, et selle omadusi muuta.",
+      fingerStrip: "Vali küüs",
+      elementLabel: "{name}, {color}, {y} % tipust",
+      elementHint:
+        "Nooleklahvid liigutavad, [ ja ] pööravad, + ja − muudavad suurust, Delete kustutab.",
+    },
+    fingers: {
+      thumb: "Pöial",
+      index: "Nimetissõrm",
+      middle: "Keskmine sõrm",
+      ring: "Sõrmusesõrm",
+      pinky: "Väike sõrm",
+    },
+    elements: {
+      french: "Prantsuse tipp",
+      "half-moon": "Poolkuu",
+      ombre: "Ombré",
+      diagonal: "Diagonaal",
+      chevron: "Sakk",
+      stripes: "Triibud",
+      polka: "Täpid",
+      glitter: "Sädelus",
+      marble: "Marmor",
+      leopard: "Leopard",
+      snow: "Lumi",
+      stars: "Tähed",
+      hearts: "Südamed",
+      foil: "Kuldleht",
+      heart: "Süda",
+      star: "Täht",
+      sparkle: "Säde",
+      daisy: "Karikakar",
+      moon: "Kuu",
+      butterfly: "Liblikas",
+      leaf: "Leht",
+      cherry: "Kirss",
+      bow: "Lehv",
+      smiley: "Naerunägu",
+      lightning: "Välk",
+      bat: "Nahkhiir",
+      snowflake: "Lumehelves",
+      "evil-eye": "Kuri silm",
+      "round-xs": "Ümar XS",
+      "round-s": "Ümar S",
+      "round-m": "Ümar M",
+      "round-l": "Ümar L",
+      "drop-m": "Tilk M",
+      "drop-l": "Tilk L",
+      "square-s": "Kandiline S",
+      "square-m": "Kandiline M",
+    },
+    stoneColors: {
+      crystal: "Kristall",
+      ab: "AB",
+      rose: "Roosa",
+      gold: "Kuld",
+      black: "Must",
+      emerald: "Smaragd",
+    },
+    export: {
+      length: "Pikkus",
+      caption: "{side} käsi",
+      failed: "Pilti ei õnnestunud luua",
+      working: "Pilti luuakse…",
+      fileName: "lumora-kyyned",
+    },
+    nailButton: "{side} käsi, {finger}",
+    live: {
+      length: "Pikkus {value}",
+      shape: "Kuju {value}, {name}",
+      sharpness: "Teravus {value}, {name}",
+    },
+  },
 };
 
 const en: Dictionary = {
@@ -247,6 +536,7 @@ const en: Dictionary = {
     instagram: "Instagram",
     time: "Your time",
     faq: "FAQ",
+    designer: "Design",
     contact: "Get in touch",
     switchLabel: "Vaheta eesti keelele",
     dockLabel: "Quick links",
@@ -385,6 +675,189 @@ const en: Dictionary = {
     tagline: "Nail lounge in Tallinn.",
     rights: "All rights reserved.",
   },
+  designer: {
+    meta: {
+      title: "Design your nails before your visit | Lumora Nail Lounge",
+      description:
+        "Put together the nail set of your dreams before your visit: length, shape, colour and decoration. Download the picture and bring it to the salon.",
+    },
+    title: "Design your nails",
+    lead: [
+      "Pick a length, shape and colour, then add patterns and stones.",
+      "Download the result as a picture to bring to your appointment.",
+    ],
+    hands: {
+      right: "Right",
+      left: "Left",
+      both: "Both",
+      copyOther: "Copy from the other hand",
+      hint: "Changes apply to all five nails of this hand.",
+      formHint: "Length, shape and sharpness are the same on both hands.",
+      label: "Hand",
+    },
+    toolbar: {
+      leftHand: "Left hand",
+      hideMenu: "Hide menu",
+      showMenu: "Show menu",
+      menu: "Menu",
+      undo: "Undo",
+      redo: "Redo",
+      reset: "Reset",
+      resetConfirm: "Clear the whole design and start over?",
+      confirm: "Clear",
+      cancel: "Cancel",
+      download: "Download",
+      share: "Share",
+      copyLink: "Copy link",
+      linkCopied: "Link copied",
+      randomAll: "Surprise me",
+      random: "Random",
+    },
+    panels: {
+      length: "Length",
+      shape: "Shape",
+      sharpness: "Sharpness",
+      color: "Colour",
+      design: "Design",
+    },
+    presets: {
+      stiletto: "Stiletto",
+      softStiletto: "Soft stiletto",
+      almond: "Almond",
+      coffin: "Coffin",
+      softCoffin: "Soft coffin",
+      oval: "Oval",
+      square: "Square",
+      squoval: "Squoval",
+      round: "Round",
+    },
+    levelText: "{value} of 5, {name}",
+    color: {
+      custom: "Custom",
+      recent: "Recent",
+      finishes: "Special finishes",
+      polishes: "Polishes",
+      applied: "Colour {name} applied",
+      names: {
+        rose: "Rose",
+        "rose-soft": "Soft rose",
+        burgundy: "Burgundy",
+        plum: "Plum",
+        pearl: "Pearl",
+        cherry: "Cherry",
+        nude: "Nude",
+        ink: "Ink",
+        lavender: "Lavender",
+        sage: "Sage",
+        coral: "Coral",
+        milk: "Milk",
+        chrome: "Chrome",
+        holo: "Holo",
+        "cat-eye": "Cat eye",
+        aurora: "Aurora",
+        galaxy: "Galaxy",
+        ombre: "Ombré",
+        sunset: "Sunset",
+        candy: "Candy",
+        ocean: "Ocean",
+      },
+    },
+    design: {
+      addElement: "Add element",
+      layers: "Elements on this nail",
+      patterns: "Patterns",
+      illustrations: "Illustrations",
+      stones: "Rhinestones",
+      selected: "Selected element",
+      size: "Size",
+      rotation: "Rotation",
+      offset: "Position",
+      color: "Colour",
+      color2: "Second colour",
+      flip: "Flip",
+      duplicate: "Duplicate",
+      forward: "Bring forward",
+      back: "Send back",
+      delete: "Delete",
+      allNails: "All nails",
+      onlyThis: "Only this nail",
+      applyTo: "Apply to",
+      done: "Done",
+      empty:
+        "No elements on this nail yet. Add a pattern, an illustration or a stone.",
+      pick: "Choose an element on the nail or in the list to change its properties.",
+      fingerStrip: "Choose a nail",
+      elementLabel: "{name}, {color}, {y} % from the top",
+      elementHint:
+        "Arrow keys move, [ and ] rotate, + and − resize, Delete removes.",
+    },
+    fingers: {
+      thumb: "Thumb",
+      index: "Index finger",
+      middle: "Middle finger",
+      ring: "Ring finger",
+      pinky: "Little finger",
+    },
+    elements: {
+      french: "French tip",
+      "half-moon": "Half moon",
+      ombre: "Ombré",
+      diagonal: "Diagonal split",
+      chevron: "Chevron",
+      stripes: "Stripes",
+      polka: "Polka dots",
+      glitter: "Glitter",
+      marble: "Marble",
+      leopard: "Leopard",
+      snow: "Snow",
+      stars: "Stars",
+      hearts: "Hearts",
+      foil: "Gold foil",
+      heart: "Heart",
+      star: "Star",
+      sparkle: "Sparkle",
+      daisy: "Daisy",
+      moon: "Moon",
+      butterfly: "Butterfly",
+      leaf: "Leaf",
+      cherry: "Cherry",
+      bow: "Bow",
+      smiley: "Smiley",
+      lightning: "Lightning",
+      bat: "Bat",
+      snowflake: "Snowflake",
+      "evil-eye": "Evil eye",
+      "round-xs": "Round XS",
+      "round-s": "Round S",
+      "round-m": "Round M",
+      "round-l": "Round L",
+      "drop-m": "Teardrop M",
+      "drop-l": "Teardrop L",
+      "square-s": "Square S",
+      "square-m": "Square M",
+    },
+    stoneColors: {
+      crystal: "Crystal",
+      ab: "Aurora borealis",
+      rose: "Rose",
+      gold: "Gold",
+      black: "Black",
+      emerald: "Emerald",
+    },
+    export: {
+      length: "Length",
+      caption: "{side} hand",
+      failed: "Could not create the image",
+      working: "Creating the image…",
+      fileName: "lumora-nails",
+    },
+    nailButton: "{side} hand, {finger}",
+    live: {
+      length: "Length {value}",
+      shape: "Shape {value}, {name}",
+      sharpness: "Sharpness {value}, {name}",
+    },
+  },
 };
 
 const dictionaries: Record<Locale, Dictionary> = { et, en };
@@ -395,18 +868,49 @@ const LOCALES: readonly Locale[] = ["et", "en"];
 const localePath = (locale: Locale): string =>
   locale === "et" ? "/" : `/${locale}/`;
 
-const localeUrl = (locale: Locale): string =>
-  `${SITE_URL}${localePath(locale)}`;
+type Page = "home" | "designer";
+
+// The designer's slug in each language; the home page is the locale root.
+const PAGE_SLUGS: Record<Locale, Record<Page, string>> = {
+  et: { home: "", designer: "kujundaja/" },
+  en: { home: "", designer: "designer/" },
+};
+
+const localePagePath = (locale: Locale, page: Page): string =>
+  `${localePath(locale)}${PAGE_SLUGS[locale][page]}`;
+
+const localeUrl = (locale: Locale, page: Page = "home"): string =>
+  `${SITE_URL}${localePagePath(locale, page)}`;
+
+// Fills `{name}` placeholders in a copy string.
+const fill = (template: string, values: Record<string, string | number>) =>
+  template.replaceAll(/{(\w+)}/g, (match, key: string) => {
+    const value = values[key];
+
+    return value === undefined ? match : String(value);
+  });
 
 const getDictionary = (locale: Locale): Dictionary => dictionaries[locale];
 
-export type { Dictionary, Locale, PerkKind, Picker, Question };
+export type {
+  DesignerCopy,
+  Dictionary,
+  FingerName,
+  Locale,
+  Page,
+  PerkKind,
+  Picker,
+  Preset,
+  Question,
+};
 
 export {
   EMAIL,
+  fill,
   getDictionary,
   INSTAGRAM_HANDLE,
   INSTAGRAM_URL,
+  localePagePath,
   localePath,
   LOCALES,
   localeUrl,

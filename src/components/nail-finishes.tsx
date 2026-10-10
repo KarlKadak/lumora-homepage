@@ -119,11 +119,12 @@ const POLKA = [-40, -22, -4, 14, 32, 50].flatMap((y, row) =>
 // Halloween: polish dripping down from the tip, bats, and a jack-o'-lantern
 // grinning near the cuticle.
 const HalloweenDecor = ({
+  idPrefix,
   id,
   drip,
   bat,
-}: Readonly<{ id: string; drip: string; bat: string }>) => (
-  <g id={`hero-decor-${id}`} stroke="none">
+}: Readonly<{ idPrefix: string; id: string; drip: string; bat: string }>) => (
+  <g id={`${idPrefix}-decor-${id}`} stroke="none">
     <path
       d="M-30-80H30V-36C27-36 26-20 22-20C18-20 18-40 14-40C10-40 11-14 6-14C1-14 2-44-4-44C-9-44-8-28-13-28C-18-28-17-46-22-46C-26-46-26-34-30-34Z"
       fill={drip}
@@ -163,42 +164,73 @@ const FinishSwatch = ({
   </svg>
 );
 
-// Gradients and overlays for the hero's `defs`. The gradients use the nail's
-// bounding box, so they turn with the nail; the brush bristles and the bottle
-// borrow the same ones.
-const HeroFinishDefs = () => (
+// The special finishes: the gradient catalogue the colour panels offer.
+const GRADIENT_FINISHES: readonly string[] = [
+  "chrome",
+  "holo",
+  "cat-eye",
+  "aurora",
+  "galaxy",
+  "ombre",
+  "sunset",
+  "candy",
+  "ocean",
+];
+
+// The polish gradients alone, for pages that only paint nails.
+const FinishGradients = ({
+  idPrefix = "hero",
+}: Readonly<{ idPrefix?: string }>) => (
   <>
-    <linearGradient id="hero-paint-chrome" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id={`${idPrefix}-paint-chrome`} x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stopColor="#fbf5f3" />
       <stop offset="0.45" stopColor="#ebc9c1" />
       <stop offset="0.7" stopColor="#cf8e80" />
       <stop offset="1" stopColor="#fbf5f3" />
     </linearGradient>
     {/* Tip to cuticle: a classic ombré. */}
-    <linearGradient id="hero-paint-ombre" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id={`${idPrefix}-paint-ombre`} x1="0" y1="0" x2="0" y2="1">
       <stop offset="0.1" stopColor="#fbf5f3" />
       <stop offset="0.9" stopColor="#cf8e80" />
     </linearGradient>
     {/* Cuticle to tip, the other way round and warmer. */}
-    <linearGradient id="hero-paint-sunset" x1="0" y1="1" x2="0" y2="0">
+    <linearGradient id={`${idPrefix}-paint-sunset`} x1="0" y1="1" x2="0" y2="0">
       <stop offset="0" stopColor="#f6c177" />
       <stop offset="0.5" stopColor="#ec7a62" />
       <stop offset="1" stopColor="#8a2c62" />
     </linearGradient>
     {/* A steep diagonal. */}
-    <linearGradient id="hero-paint-candy" x1="0" y1="0" x2="1" y2="0.4">
+    <linearGradient
+      id={`${idPrefix}-paint-candy`}
+      x1="0"
+      y1="0"
+      x2="1"
+      y2="0.4"
+    >
       <stop offset="0" stopColor="#ffd3e0" />
       <stop offset="0.5" stopColor="#ff8fb1" />
       <stop offset="1" stopColor="#c94f7c" />
     </linearGradient>
     {/* Side to side. */}
-    <linearGradient id="hero-paint-ocean" x1="1" y1="0" x2="0" y2="0.3">
+    <linearGradient
+      id={`${idPrefix}-paint-ocean`}
+      x1="1"
+      y1="0"
+      x2="0"
+      y2="0.3"
+    >
       <stop offset="0" stopColor="#0f3d5e" />
       <stop offset="0.55" stopColor="#2f8f9d" />
       <stop offset="1" stopColor="#b9ecee" />
     </linearGradient>
     {/* Cat-eye: a bright magnetic band down the middle. */}
-    <linearGradient id="hero-paint-cat-eye" x1="0" y1="0" x2="1" y2="0.6">
+    <linearGradient
+      id={`${idPrefix}-paint-cat-eye`}
+      x1="0"
+      y1="0"
+      x2="1"
+      y2="0.6"
+    >
       <stop offset="0" stopColor="#2b1631" />
       <stop offset="0.42" stopColor="#5a3a74" />
       <stop offset="0.5" stopColor="#d7b6ff" />
@@ -206,7 +238,13 @@ const HeroFinishDefs = () => (
       <stop offset="1" stopColor="#2b1631" />
     </linearGradient>
     {/* Holographic: a shallow diagonal of pastel bands. */}
-    <linearGradient id="hero-paint-holo" x1="0" y1="0.2" x2="1" y2="0.8">
+    <linearGradient
+      id={`${idPrefix}-paint-holo`}
+      x1="0"
+      y1="0.2"
+      x2="1"
+      y2="0.8"
+    >
       <stop offset="0" stopColor="#ffd0e5" />
       <stop offset="0.25" stopColor="#fff3b0" />
       <stop offset="0.5" stopColor="#c3f5e2" />
@@ -214,19 +252,29 @@ const HeroFinishDefs = () => (
       <stop offset="1" stopColor="#f2c6ff" />
     </linearGradient>
     {/* Aurora: a soft radial glow off-centre near the tip. */}
-    <radialGradient id="hero-paint-aurora" cx="0.4" cy="0.3" r="0.9">
+    <radialGradient id={`${idPrefix}-paint-aurora`} cx="0.4" cy="0.3" r="0.9">
       <stop offset="0" stopColor="#c8f3e6" />
       <stop offset="0.5" stopColor="#7fb8c9" />
       <stop offset="1" stopColor="#3b2a6b" />
     </radialGradient>
     {/* Galaxy: deep at the edges, a nebula glow near the cuticle. */}
-    <radialGradient id="hero-paint-galaxy" cx="0.55" cy="0.7" r="0.8">
+    <radialGradient id={`${idPrefix}-paint-galaxy`} cx="0.55" cy="0.7" r="0.8">
       <stop offset="0" stopColor="#6b2d7a" />
       <stop offset="0.6" stopColor="#2a1646" />
       <stop offset="1" stopColor="#120a22" />
     </radialGradient>
+  </>
+);
 
-    <g id="hero-decor-french" stroke="none">
+// Gradients and overlays for the hero's `defs`. The gradients use the nail's
+// bounding box, so they turn with the nail; the brush bristles and the bottle
+// borrow the same ones. The designer reuses them under its own id prefix.
+const HeroFinishDefs = ({
+  idPrefix = "hero",
+}: Readonly<{ idPrefix?: string }>) => (
+  <>
+    <FinishGradients idPrefix={idPrefix} />
+    <g id={`${idPrefix}-decor-french`} stroke="none">
       <path
         d="M-30-80H30V-24C18-26 8-40 0-44C-8-40-18-26-30-24Z"
         fill="#fbf5f3"
@@ -239,15 +287,15 @@ const HeroFinishDefs = () => (
         strokeWidth="0.8"
       />
     </g>
-    <g id="hero-decor-half-moon" stroke="none">
+    <g id={`${idPrefix}-decor-half-moon`} stroke="none">
       <path d="M-30 80H30V34C18 20-18 20-30 34Z" fill="#fbf5f3" />
     </g>
-    <g id="hero-decor-polka" stroke="none" fill="#4a0d1c">
+    <g id={`${idPrefix}-decor-polka`} stroke="none" fill="#4a0d1c">
       {POLKA.map(({ x, y }) => (
         <circle key={`${String(x)}-${String(y)}`} cx={x} cy={y} r="3.2" />
       ))}
     </g>
-    <g id="hero-decor-glitter" stroke="none" fill="#ffffff">
+    <g id={`${idPrefix}-decor-glitter`} stroke="none" fill="#ffffff">
       {GLITTER.map(({ x, y, r }, index) => (
         <circle
           key={index}
@@ -258,7 +306,7 @@ const HeroFinishDefs = () => (
         />
       ))}
     </g>
-    <g id="hero-decor-stars" stroke="none" fill="#ffffff">
+    <g id={`${idPrefix}-decor-stars`} stroke="none" fill="#ffffff">
       {STARS.map(({ x, y, r }, index) =>
         r > 0.7 ?
           <path
@@ -275,7 +323,7 @@ const HeroFinishDefs = () => (
           />,
       )}
     </g>
-    <g id="hero-decor-foil" stroke="none" fill="#e9c46a">
+    <g id={`${idPrefix}-decor-foil`} stroke="none" fill="#e9c46a">
       {FOIL.map(({ x, y, r }, index) => (
         <path
           key={index}
@@ -284,7 +332,7 @@ const HeroFinishDefs = () => (
         />
       ))}
     </g>
-    <g id="hero-decor-snow" stroke="none" fill="#ffffff">
+    <g id={`${idPrefix}-decor-snow`} stroke="none" fill="#ffffff">
       {SNOW.map(({ x, y, r }, index) => (
         <path
           key={index}
@@ -293,13 +341,13 @@ const HeroFinishDefs = () => (
         />
       ))}
     </g>
-    <g id="hero-decor-hearts" stroke="none" fill="#a3122c">
+    <g id={`${idPrefix}-decor-hearts`} stroke="none" fill="#a3122c">
       <path d={heartPath(-9, -30, 4)} />
       <path d={heartPath(10, -6, 5)} />
       <path d={heartPath(-8, 22, 4.5)} />
       <path d={heartPath(11, 40, 3.5)} opacity="0.8" />
     </g>
-    <g id="hero-decor-leopard" stroke="none">
+    <g id={`${idPrefix}-decor-leopard`} stroke="none">
       {LEOPARD_SPOTS.map(({ x, y, r }) => (
         <g key={`${String(x)}-${String(y)}`}>
           <ellipse cx={x} cy={y} rx={r} ry={r * 0.8} fill="#b8743f" />
@@ -313,7 +361,7 @@ const HeroFinishDefs = () => (
         </g>
       ))}
     </g>
-    <g id="hero-decor-marble" fill="none" strokeLinecap="round">
+    <g id={`${idPrefix}-decor-marble`} fill="none" strokeLinecap="round">
       <path
         d="M-24-50C-10-40-18-20-4-10S14 6 4 22S-10 40 2 56"
         stroke="#80525b"
@@ -333,14 +381,29 @@ const HeroFinishDefs = () => (
         strokeWidth="0.7"
       />
     </g>
-    <g id="hero-decor-stripes" fill="none" stroke="#cf8e80" strokeWidth="4">
+    <g
+      id={`${idPrefix}-decor-stripes`}
+      fill="none"
+      stroke="#cf8e80"
+      strokeWidth="4"
+    >
       {[-64, -48, -32, -16, 0, 16, 32, 48, 64].map((y) => (
         <path key={y} d={`M-36 ${String(y)}L36 ${String(y - 36)}`} />
       ))}
     </g>
-    <HalloweenDecor id="halloween" drip="#1c1118" bat="#1c1118" />
-    <HalloweenDecor id="halloween-night" drip="#9be15d" bat="#1c1118" />
-    <g id="hero-decor-festive" stroke="none">
+    <HalloweenDecor
+      idPrefix={idPrefix}
+      id="halloween"
+      drip="#1c1118"
+      bat="#1c1118"
+    />
+    <HalloweenDecor
+      idPrefix={idPrefix}
+      id="halloween-night"
+      drip="#9be15d"
+      bat="#1c1118"
+    />
+    <g id={`${idPrefix}-decor-festive`} stroke="none">
       <path
         d="M-30-80H30V-30C18-34 8-46 0-50C-8-46-18-34-30-30Z"
         fill="#a3122c"
@@ -359,6 +422,16 @@ const HeroFinishDefs = () => (
   </>
 );
 
-export { CLASSIC_FINISHES, FINISHES, FinishSwatch, HeroFinishDefs, isGradient };
+export {
+  batPath,
+  CLASSIC_FINISHES,
+  FINISHES,
+  FinishGradients,
+  FinishSwatch,
+  GRADIENT_FINISHES,
+  heartPath,
+  HeroFinishDefs,
+  isGradient,
+};
 
 export type { Finish };

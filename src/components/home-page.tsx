@@ -1,7 +1,15 @@
-import Link from "next/link";
 import Accordion from "@/components/accordion";
 import HeroScene from "@/components/hero-scene";
-import { BadgeRing, delay, LogoMark, NailGlyph } from "@/components/nail-art";
+import { BadgeRing, delay, NailGlyph } from "@/components/nail-art";
+import {
+  eyebrow,
+  Footer,
+  Header,
+  InstagramIcon,
+  MobileDock,
+  roseButton,
+  sectionTitle,
+} from "@/components/site-chrome";
 import type { Dictionary, Locale, PerkKind } from "@/content/dictionary";
 import {
   EMAIL,
@@ -15,123 +23,6 @@ import {
 
 const MAP_SOURCE =
   "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d151614.12249171216!2d24.60637007581068!3d59.48269761665056!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x469294b4763fb4c7%3A0x500b36d18fc70f0!2sKesklinn%2C%20Tallinn!5e0!3m2!1sen!2see!4v1791322144284!5m2!1sen!2see";
-
-// Display and padding are left out so callers can vary them without clashes.
-const roseButtonBase =
-  "items-center justify-center rounded-full bg-rose text-sm font-semibold tracking-wide text-burgundy-deep transition-colors hover:bg-rose-soft focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rose";
-
-const roseButton = `inline-flex px-7 py-4 ${roseButtonBase}`;
-
-const eyebrow = "text-[0.7rem] font-semibold tracking-[0.3em] uppercase";
-
-const sectionTitle =
-  "font-serif text-4xl leading-[1.05] font-medium sm:text-5xl";
-
-const InstagramIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    className="size-4"
-    aria-hidden="true"
-  >
-    <rect x="3" y="3" width="18" height="18" rx="5" />
-    <circle cx="12" cy="12" r="4" />
-    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-  </svg>
-);
-
-const Wordmark = () => (
-  <span className="flex items-center gap-2.5">
-    <LogoMark className="size-9" />
-    <span className="flex flex-col leading-none">
-      <span className="font-serif text-2xl font-medium tracking-wide">
-        Lumora
-      </span>
-      <span className="mt-1 text-[0.55rem] tracking-[0.38em] text-rose uppercase">
-        Nail Lounge
-      </span>
-    </span>
-  </span>
-);
-
-const Header = ({
-  locale,
-  nav,
-}: Readonly<{ locale: Locale; nav: Dictionary["nav"] }>) => {
-  const otherLocale: Locale = locale === "et" ? "en" : "et";
-
-  return (
-    <header className="sticky top-0 z-50 bg-burgundy-deep/90 text-white backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-8 md:py-4">
-        <a href="#top" aria-label="Lumora Nail Lounge">
-          <Wordmark />
-        </a>
-        <nav className="hidden items-center gap-8 text-sm md:flex">
-          <a href="#sinu-aeg" className="transition-colors hover:text-rose">
-            {nav.time}
-          </a>
-          <a href="#instagram" className="transition-colors hover:text-rose">
-            {nav.instagram}
-          </a>
-          <a href="#kkk" className="transition-colors hover:text-rose">
-            {nav.faq}
-          </a>
-        </nav>
-        <div className="flex items-center gap-4">
-          <Link
-            href={otherLocale === "en" ? "/en/" : "/"}
-            hrefLang={otherLocale}
-            aria-label={nav.switchLabel}
-            className="flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-xs font-semibold tracking-widest transition-colors hover:border-rose"
-          >
-            <span className={locale === "et" ? "text-white" : "text-white/45"}>
-              ET
-            </span>
-            <span className="text-rose">/</span>
-            <span className={locale === "en" ? "text-white" : "text-white/45"}>
-              EN
-            </span>
-          </Link>
-          <a
-            href="#kontakt"
-            className={`${roseButtonBase} hidden px-5 py-2.5 md:inline-flex`}
-          >
-            {nav.contact}
-          </a>
-        </div>
-      </div>
-    </header>
-  );
-};
-
-// Thumb-reach navigation for phones; the header carries it from md up.
-const MobileDock = ({ nav }: Readonly<{ nav: Dictionary["nav"] }>) => (
-  <nav
-    aria-label={nav.dockLabel}
-    className="rise fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 md:hidden"
-    style={delay(1.4)}
-  >
-    <div className="mx-auto flex max-w-md items-center justify-between gap-1 rounded-full bg-burgundy-deep/95 p-1.5 pl-3 text-xs font-semibold text-white shadow-xl shadow-burgundy-deep/40 backdrop-blur-md">
-      <a href="#sinu-aeg" className="px-2 py-2.5">
-        {nav.time}
-      </a>
-      <a href="#instagram" className="px-2 py-2.5">
-        {nav.instagram}
-      </a>
-      <a href="#kkk" className="px-2 py-2.5">
-        {nav.faq}
-      </a>
-      <a
-        href="#kontakt"
-        className="rounded-full bg-rose px-4 py-2.5 text-burgundy-deep"
-      >
-        {nav.contact}
-      </a>
-    </div>
-  </nav>
-);
 
 const Hero = ({ hero }: Readonly<{ hero: Dictionary["hero"] }>) => (
   <section
@@ -500,36 +391,6 @@ const Visit = ({ visit }: Readonly<{ visit: Dictionary["visit"] }>) => {
   );
 };
 
-const Footer = ({ footer }: Readonly<{ footer: Dictionary["footer"] }>) => (
-  <footer className="overflow-hidden bg-burgundy-deep pt-16 pb-24 text-white/60 md:pt-20 md:pb-0">
-    <div className="mx-auto max-w-6xl px-4 sm:px-8">
-      <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-end sm:justify-between">
-        <p>{footer.tagline}</p>
-        <a
-          href={INSTAGRAM_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex w-fit items-center gap-2 transition-colors hover:text-rose"
-        >
-          <InstagramIcon />@{INSTAGRAM_HANDLE}
-        </a>
-        <p>
-          © {new Date().getFullYear()} Lumora Nail Lounge. {footer.rights}
-        </p>
-      </div>
-      {/* The negative margin swallows only the empty line space under the
-          letters (measured for Cormorant), so the word sits flush on the page
-          edge without being clipped, even during overscroll. */}
-      <p
-        aria-hidden="true"
-        className="mt-8 -mb-[0.165em] text-center font-serif text-[27vw] leading-none font-medium text-rose-soft select-none lg:text-[16rem]"
-      >
-        Lumora
-      </p>
-    </div>
-  </footer>
-);
-
 // schema.org description of the salon for search engines. The street address
 // and opening hours join once they are known; "Tallinn" is enough for local
 // results until then. "<" is escaped so the JSON can never close the script.
@@ -572,7 +433,7 @@ const HomePage = ({ locale }: Readonly<{ locale: Locale }>) => {
   return (
     <>
       <LocalBusinessSchema locale={locale} meta={dictionary.meta} />
-      <Header locale={locale} nav={dictionary.nav} />
+      <Header locale={locale} page="home" nav={dictionary.nav} />
       <main className="flex-1">
         <Hero hero={dictionary.hero} />
         <Marquee items={dictionary.marquee} />
@@ -583,7 +444,7 @@ const HomePage = ({ locale }: Readonly<{ locale: Locale }>) => {
         <Visit visit={dictionary.visit} />
       </main>
       <Footer footer={dictionary.footer} />
-      <MobileDock nav={dictionary.nav} />
+      <MobileDock locale={locale} page="home" nav={dictionary.nav} />
     </>
   );
 };
