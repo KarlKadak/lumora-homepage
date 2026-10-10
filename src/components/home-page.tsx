@@ -545,7 +545,7 @@ const LocalBusinessSchema = ({
     url: localeUrl(locale),
     description: meta.description,
     image: `${SITE_URL}/og-${locale}.png`,
-    logo: `${SITE_URL}/icon.svg`,
+    logo: `${SITE_URL}/icon.png`,
     email: EMAIL,
     sameAs: [INSTAGRAM_URL],
     address: {

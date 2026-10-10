@@ -13,6 +13,7 @@ const manifest = (): MetadataRoute.Manifest => ({
   theme_color: "#2a0510",
   icons: [
     { src: "/icon.svg", sizes: "any", type: "image/svg+xml" },
+    { src: "/icon.png", sizes: "192x192", type: "image/png" },
     { src: "/apple-icon.png", sizes: "180x180", type: "image/png" },
   ],
 });
