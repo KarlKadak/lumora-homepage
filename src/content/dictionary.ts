@@ -153,6 +153,8 @@ interface Dictionary {
     primary: string;
     secondary: string;
     designer: string;
+    // Repeated around the hero badge, which links to the designer.
+    badge: string;
     picker: Picker;
   };
   marquee: string[];
@@ -226,6 +228,7 @@ const et: Dictionary = {
     primary: "Võta ühendust",
     secondary: "Jälgi Instagramis",
     designer: "Kujunda oma küüned",
+    badge: "Kujunda oma küüned · ",
     picker: {
       hint: "Klõpsa pudelil ja vali värv",
       title: "Vali värv",
@@ -592,6 +595,7 @@ const en: Dictionary = {
     primary: "Get in touch",
     secondary: "Follow on Instagram",
     designer: "Design your nails",
+    badge: "Design your nails · ",
     picker: {
       hint: "Click the bottle to pick a colour",
       title: "Pick a colour",

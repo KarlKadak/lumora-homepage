@@ -55,12 +55,14 @@ const Hero = ({
 
       <div className="relative mx-auto w-[min(84vw,24rem)] md:row-span-2 md:w-full md:max-w-lg md:self-center">
         <HeroScene className="w-full text-rose" picker={hero.picker} />
-        <div
-          className="rise absolute -bottom-7 -left-5 size-24 rounded-full bg-rose p-1.5 shadow-xl shadow-burgundy-deep/50 sm:size-28"
+        <Link
+          href={localePagePath(locale, "designer")}
+          aria-label={hero.designer}
+          className="rise absolute -bottom-7 -left-5 block size-24 rounded-full bg-rose p-1.5 shadow-xl shadow-burgundy-deep/50 transition-colors hover:bg-rose-soft focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rose sm:size-28"
           style={delay(1.6)}
         >
-          <BadgeRing text="Lumora · Nail Lounge · Tallinn · " />
-        </div>
+          <BadgeRing text={hero.badge} />
+        </Link>
       </div>
 
       <div className="md:self-start">
