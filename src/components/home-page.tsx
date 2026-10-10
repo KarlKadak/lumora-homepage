@@ -6,7 +6,6 @@ import {
   Footer,
   Header,
   InstagramIcon,
-  MobileDock,
   roseButton,
   sectionTitle,
 } from "@/components/site-chrome";
@@ -444,7 +443,6 @@ const HomePage = ({ locale }: Readonly<{ locale: Locale }>) => {
         <Visit visit={dictionary.visit} />
       </main>
       <Footer footer={dictionary.footer} />
-      <MobileDock locale={locale} page="home" nav={dictionary.nav} />
     </>
   );
 };

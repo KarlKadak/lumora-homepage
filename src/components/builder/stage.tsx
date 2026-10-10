@@ -183,7 +183,7 @@ const Toolbar = ({
               aria-busy={tool.busy}
               aria-label={tool.title}
               title={tool.title}
-              className={`flex min-h-11 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[0.62rem] leading-none font-semibold transition-[color,background-color,transform] duration-200 hover:bg-white/10 hover:text-rose active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-white ${tool.pressed ? "text-rose" : "text-white"} ${compact ? "w-[4.1rem] px-0.5" : "min-w-14"}`}
+              className={`flex min-h-11 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[0.62rem] leading-none font-semibold transition-[color,background-color,transform] duration-200 hover:bg-white/10 hover:text-rose active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-white ${tool.pressed ? "text-rose" : "text-white"} ${compact ? "w-[4.1rem] px-0.5" : "w-[5.25rem] px-1"}`}
             >
               <span className="[&>svg]:size-5">
                 {tool.busy ? ICONS.spinner : tool.icon}

@@ -176,9 +176,57 @@ body {
   .rise,
   .reveal,
   .element-pop,
+  .beckon,
+  .beckon::after,
   .animate-marquee,
   .animate-spin-slow {
     animation: none;
+  }
+}
+
+/* The designer link beckons: its glow breathes and a shine sweeps across. */
+.beckon {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  animation: beckon-glow 2.8s ease-in-out infinite;
+}
+
+.beckon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    color-mix(in srgb, var(--color-rose-soft) 45%, transparent) 50%,
+    transparent 65%
+  );
+  animation: beckon-shine 1.8s cubic-bezier(0.2, 0.7, 0.2, 1) 0.4s infinite;
+  pointer-events: none;
+}
+
+@keyframes beckon-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-rose) 60%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 0 16px 3px
+      color-mix(in srgb, var(--color-rose) 60%, transparent);
+  }
+}
+
+@keyframes beckon-shine {
+  from {
+    transform: translateX(-100%);
+  }
+
+  60%,
+  to {
+    transform: translateX(100%);
   }
 }
 

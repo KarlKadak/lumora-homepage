@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { delay, LogoMark } from "@/components/nail-art";
+import { HeaderMenu } from "@/components/header-menu";
+import { LogoMark } from "@/components/nail-art";
 import type { Dictionary, Locale, Page } from "@/content/dictionary";
 import {
   INSTAGRAM_HANDLE,
@@ -7,7 +8,7 @@ import {
   localePagePath,
 } from "@/content/dictionary";
 
-// The header, mobile dock and footer shared by every page, and the class
+// The header and footer shared by every page, and the class
 // strings the pages build their buttons and headings from.
 
 // Display and padding are left out so callers can vary them without clashes.
@@ -53,117 +54,153 @@ const Wordmark = () => (
 // Section anchors on the home page; from another page they go via its path.
 const anchor = (home: string, id: string) => `${home}#${id}`;
 
+// The designer link beckons: a rose pill with a breathing glow and a shine
+// sweeping across it, which rests once the designer is the current page.
+const designerLink = (current: boolean) =>
+  `inline-flex items-center gap-1.5 rounded-full border border-rose px-4 py-1.5 text-sm font-semibold text-rose-soft transition-colors hover:bg-rose hover:text-burgundy-deep ${current ? "bg-rose/25" : "beckon bg-rose/10"}`;
+
+const Sparkle = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+    className="size-3.5 text-rose"
+  >
+    <path d="M12 2c.6 5.4 4.6 9.4 10 10-5.4.6-9.4 4.6-10 10-.6-5.4-4.6-9.4-10-10 5.4-.6 9.4-4.6 10-10Z" />
+  </svg>
+);
+
+const LocaleSwitch = ({
+  locale,
+  page,
+  label,
+}: Readonly<{ locale: Locale; page: Page; label: string }>) => {
+  const otherLocale: Locale = locale === "et" ? "en" : "et";
+
+  return (
+    <Link
+      href={localePagePath(otherLocale, page)}
+      hrefLang={otherLocale}
+      aria-label={label}
+      className="flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-xs font-semibold tracking-widest transition-colors hover:border-rose"
+    >
+      <span className={locale === "et" ? "text-white" : "text-white/45"}>
+        ET
+      </span>
+      <span className="text-rose">/</span>
+      <span className={locale === "en" ? "text-white" : "text-white/45"}>
+        EN
+      </span>
+    </Link>
+  );
+};
+
+// The desktop header is three columns so the navigation sits on the page's
+// centre line, whatever the wordmark and buttons beside it measure. On
+// phones the navigation and the locale switch move into the hamburger
+// menu.
 const Header = ({
   locale,
   page,
   nav,
 }: Readonly<{ locale: Locale; page: Page; nav: Dictionary["nav"] }>) => {
-  const otherLocale: Locale = locale === "et" ? "en" : "et";
   const home = localePagePath(locale, "home");
   const onHome = page === "home";
   const link = (id: string) => (onHome ? `#${id}` : anchor(home, id));
+  const onDesigner = page === "designer";
+  const designer = localePagePath(locale, "designer");
+  const sections = [
+    { id: "sinu-aeg", label: nav.time },
+    { id: "instagram", label: nav.instagram },
+    { id: "kkk", label: nav.faq },
+  ];
 
   return (
     <header className="sticky top-0 z-50 bg-burgundy-deep/90 text-white backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-8 md:py-4">
+      <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2 sm:px-8 md:grid md:grid-cols-[1fr_auto_1fr] md:py-4">
         {onHome ?
-          <a href="#top" aria-label="Lumora Nail Lounge">
+          <a
+            href="#top"
+            aria-label="Lumora Nail Lounge"
+            className="justify-self-start"
+          >
             <Wordmark />
           </a>
-        : <Link href={home} aria-label="Lumora Nail Lounge">
+        : <Link
+            href={home}
+            aria-label="Lumora Nail Lounge"
+            className="justify-self-start"
+          >
             <Wordmark />
           </Link>
         }
-        <nav className="hidden items-center gap-8 text-sm md:flex">
-          <a
-            href={link("sinu-aeg")}
-            className="transition-colors hover:text-rose"
-          >
-            {nav.time}
-          </a>
-          <a
-            href={link("instagram")}
-            className="transition-colors hover:text-rose"
-          >
-            {nav.instagram}
-          </a>
-          <a href={link("kkk")} className="transition-colors hover:text-rose">
-            {nav.faq}
-          </a>
+        <nav className="hidden items-center gap-8 justify-self-center text-sm md:flex">
+          {sections.map((section) => (
+            <a
+              key={section.id}
+              href={link(section.id)}
+              className="transition-colors hover:text-rose"
+            >
+              {section.label}
+            </a>
+          ))}
           <Link
-            href={localePagePath(locale, "designer")}
-            aria-current={page === "designer" ? "page" : undefined}
-            className={`transition-colors hover:text-rose ${page === "designer" ? "text-rose" : ""}`}
+            href={designer}
+            aria-current={onDesigner ? "page" : undefined}
+            className={designerLink(onDesigner)}
           >
+            <Sparkle />
             {nav.designer}
           </Link>
         </nav>
-        <div className="flex items-center gap-4">
-          <Link
-            href={localePagePath(otherLocale, page)}
-            hrefLang={otherLocale}
-            aria-label={nav.switchLabel}
-            className="flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-xs font-semibold tracking-widest transition-colors hover:border-rose"
-          >
-            <span className={locale === "et" ? "text-white" : "text-white/45"}>
-              ET
-            </span>
-            <span className="text-rose">/</span>
-            <span className={locale === "en" ? "text-white" : "text-white/45"}>
-              EN
-            </span>
-          </Link>
+        <div className="hidden items-center gap-4 justify-self-end md:flex">
+          <LocaleSwitch locale={locale} page={page} label={nav.switchLabel} />
           <a
             href={link("kontakt")}
-            className={`${roseButtonBase} hidden px-5 py-2.5 md:inline-flex`}
+            className={`${roseButtonBase} inline-flex px-5 py-2.5`}
           >
             {nav.contact}
           </a>
         </div>
+        <HeaderMenu label={nav.menuLabel}>
+          <nav
+            aria-label={nav.menuLabel}
+            className="flex flex-col gap-1 px-4 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-base"
+          >
+            {sections.map((section) => (
+              <a
+                key={section.id}
+                href={link(section.id)}
+                className="rounded-xl px-3 py-3 transition-colors hover:bg-white/5 hover:text-rose"
+              >
+                {section.label}
+              </a>
+            ))}
+            <Link
+              href={designer}
+              aria-current={onDesigner ? "page" : undefined}
+              className={`${designerLink(onDesigner)} mt-1 w-fit px-5 py-2.5 text-base`}
+            >
+              <Sparkle />
+              {nav.designer}
+            </Link>
+            <div className="mt-4 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
+              <a
+                href={link("kontakt")}
+                className={`${roseButtonBase} inline-flex px-5 py-2.5`}
+              >
+                {nav.contact}
+              </a>
+              <LocaleSwitch
+                locale={locale}
+                page={page}
+                label={nav.switchLabel}
+              />
+            </div>
+          </nav>
+        </HeaderMenu>
       </div>
     </header>
-  );
-};
-
-// Thumb-reach navigation for phones; the header carries it from md up.
-const MobileDock = ({
-  locale,
-  page,
-  nav,
-}: Readonly<{ locale: Locale; page: Page; nav: Dictionary["nav"] }>) => {
-  const home = localePagePath(locale, "home");
-  const link = (id: string) => (page === "home" ? `#${id}` : anchor(home, id));
-
-  return (
-    <nav
-      aria-label={nav.dockLabel}
-      className="rise fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 md:hidden"
-      style={delay(1.4)}
-    >
-      <div className="mx-auto flex max-w-md items-center justify-between gap-1 rounded-full bg-burgundy-deep/95 p-1.5 pl-3 text-[0.7rem] font-semibold text-white shadow-xl shadow-burgundy-deep/40 backdrop-blur-md">
-        <a href={link("sinu-aeg")} className="px-1.5 py-2.5">
-          {nav.time}
-        </a>
-        <a href={link("instagram")} className="px-1.5 py-2.5">
-          {nav.instagram}
-        </a>
-        <a href={link("kkk")} className="px-1.5 py-2.5">
-          {nav.faq}
-        </a>
-        <Link
-          href={localePagePath(locale, "designer")}
-          className="px-1.5 py-2.5"
-        >
-          {nav.designer}
-        </Link>
-        <a
-          href={link("kontakt")}
-          className="rounded-full bg-rose px-3.5 py-2.5 text-burgundy-deep"
-        >
-          {nav.contact}
-        </a>
-      </div>
-    </nav>
   );
 };
 
@@ -172,7 +209,7 @@ const Footer = ({
   compact = false,
 }: Readonly<{ footer: Dictionary["footer"]; compact?: boolean }>) => (
   <footer
-    className={`overflow-hidden bg-burgundy-deep text-white/60 ${compact ? "py-8" : "pt-16 pb-24 md:pt-20 md:pb-0"}`}
+    className={`overflow-hidden bg-burgundy-deep text-white/60 ${compact ? "py-8" : "pt-16 md:pt-20"}`}
   >
     <div className="mx-auto max-w-6xl px-4 sm:px-8">
       <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-end sm:justify-between">
@@ -209,7 +246,6 @@ export {
   Footer,
   Header,
   InstagramIcon,
-  MobileDock,
   roseButton,
   roseButtonBase,
   sectionTitle,

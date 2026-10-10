@@ -399,6 +399,16 @@ const sameDesign = (a: NailDesign, b: NailDesign) =>
 const nailKey = (hand: HandState, finger: Finger) =>
   `${formKey(hand.form)}/${designKey(hand.nails[finger] ?? emptyNail())}`;
 
+// The hand as its mirror image: the left hand is a copy of the right when
+// this of it keys the same as the right.
+const mirroredHand = (hand: HandState): HandState => ({
+  ...hand,
+  nails: hand.nails.map((nail) => ({
+    ...nail,
+    elements: nail.elements.map((element) => mirrored(element)),
+  })),
+});
+
 // Compact JSON for the share link and the draft: short keys, rounded
 // numbers. Decoding validates every field, since the input is untrusted.
 interface PackedElement {
@@ -564,6 +574,7 @@ export {
   INITIAL_HISTORY,
   INITIAL_STATE,
   mirrored,
+  mirroredHand,
   nailKey,
   nailOf,
   pack,

@@ -46,6 +46,7 @@ interface DesignerCopy {
     hideMenu: string;
     showMenu: string;
     menu: string;
+    close: string;
     undo: string;
     redo: string;
     reset: string;
@@ -139,7 +140,7 @@ interface Dictionary {
     designer: string;
     contact: string;
     switchLabel: string;
-    dockLabel: string;
+    menuLabel: string;
   };
   hero: {
     eyebrow: string;
@@ -199,7 +200,7 @@ const et: Dictionary = {
     designer: "Kujunda",
     contact: "Võta ühendust",
     switchLabel: "Switch to English",
-    dockLabel: "Kiirlingid",
+    menuLabel: "Menüü",
   },
   hero: {
     eyebrow: "Lumora Nail Lounge",
@@ -366,6 +367,7 @@ const et: Dictionary = {
       hideMenu: "Peida menüü",
       showMenu: "Näita menüüd",
       menu: "Menüü",
+      close: "Sulge",
       undo: "Võta tagasi",
       redo: "Tee uuesti",
       reset: "Alusta uuesti",
@@ -539,7 +541,7 @@ const en: Dictionary = {
     designer: "Design",
     contact: "Get in touch",
     switchLabel: "Vaheta eesti keelele",
-    dockLabel: "Quick links",
+    menuLabel: "Menu",
   },
   hero: {
     eyebrow: "Lumora Nail Lounge",
@@ -700,6 +702,7 @@ const en: Dictionary = {
       hideMenu: "Hide menu",
       showMenu: "Show menu",
       menu: "Menu",
+      close: "Close",
       undo: "Undo",
       redo: "Redo",
       reset: "Reset",

@@ -11,6 +11,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { POLISHES } from "@/components/builder/color-panel";
+import type { DesignPart } from "@/components/builder/design-panel";
 import {
   DesignPanel,
   FINGER_NAMES,
@@ -37,9 +38,9 @@ import {
 } from "@/components/builder/menu";
 import { NailEditor, NailView } from "@/components/builder/nail-editor";
 import {
-  randomDesign,
   randomLevel,
   randomPaint,
+  randomPattern,
   randomSet,
 } from "@/components/builder/random";
 import { ICONS, type Tool, Toolbar } from "@/components/builder/stage";
@@ -56,6 +57,7 @@ import {
   FINGERS,
   handOf,
   INITIAL_HISTORY,
+  mirroredHand,
   nailKey,
   nailOf,
   reduceHistory,
@@ -96,8 +98,8 @@ interface ViewState {
   // The open section, if any.
   panel: Panel | undefined;
   designing?: Designing;
-  // Phone: the bottom sheet is open rather than peeking.
-  sheet: boolean;
+  // Phone: the open submenu point's popup.
+  part?: string;
   // Design mode set aside while the menu is hidden, to resume on show.
   parked?: Designing;
 }
@@ -107,7 +109,6 @@ const INITIAL_VIEW: ViewState = {
   both: false,
   menu: "open",
   panel: "length",
-  sheet: true,
 };
 
 // Left hand on the left, as the hands lie on a table.
@@ -217,8 +218,19 @@ const Designer = ({
   locale,
   copy,
 }: Readonly<{ locale: Locale; copy: DesignerCopy }>) => {
-  const [history, dispatch] = useReducer(reduceHistory, INITIAL_HISTORY);
-  const [view, setView] = useState<ViewState>(INITIAL_VIEW);
+  // The designer only renders in the browser, so the draft, the shared
+  // link and the device are all known before the first paint.
+  const [history, dispatch] = useReducer(reduceHistory, undefined, () => {
+    const restored = decodeHash(globalThis.location.hash) ?? loadDraft();
+
+    return restored ?
+        reduceHistory(INITIAL_HISTORY, { type: "load", state: restored })
+      : INITIAL_HISTORY;
+  });
+  const [view, setView] = useState<ViewState>(() => ({
+    ...INITIAL_VIEW,
+    both: history.present.left !== undefined,
+  }));
   const [announcement, setAnnouncement] = useState("");
   const [editorShown, setEditorShown] = useState(false);
   const [exporting, setExporting] = useState<"download" | "share" | undefined>(
@@ -226,7 +238,7 @@ const Designer = ({
   );
   const [toast, setToast] = useState<string | undefined>(undefined);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [shareable, setShareable] = useState(false);
+  const [shareable] = useState(canShareFiles);
   // Edits to the edited nail go to every nail while this is on.
   // "All nails" is the default; picking a single nail overrides it.
   const [designAll, setDesignAll] = useState(true);
@@ -263,16 +275,15 @@ const Designer = ({
     }, 50);
   }, []);
 
-  // A shared link wins over the stored draft.
+  // The workspace is sized to the viewport, so a refresh starts at the top
+  // rather than where the browser remembers the page being scrolled to.
   useEffect(() => {
-    const fromHash = decodeHash(globalThis.location.hash);
-    const restored = fromHash ?? loadDraft();
+    globalThis.history.scrollRestoration = "manual";
+    globalThis.scrollTo(0, 0);
 
-    if (restored) {
-      dispatch({ type: "load", state: restored });
-      if (restored.left) setView((current) => ({ ...current, both: true }));
-    }
-    setShareable(canShareFiles());
+    return () => {
+      globalThis.history.scrollRestoration = "auto";
+    };
   }, []);
 
   useEffect(() => {
@@ -319,15 +330,15 @@ const Designer = ({
     };
   }, [designing]);
 
-  // On phones the sheet folds down as soon as something changes, so the
-  // hands come into view. While a slider is held the fold waits for the
-  // release, or the control would vanish mid-drag.
+  // On phones a submenu popup closes as soon as something changes, so the
+  // nail shows what changed. While a slider is held the close waits for
+  // the release, or the control would vanish mid-drag.
   const steps = history.past.length + history.future.length;
   const slider = useRef({ held: false, pending: false });
 
   useEffect(() => {
     const fold = () => {
-      setView((current) => ({ ...current, sheet: false }));
+      setView((current) => ({ ...current, part: undefined }));
     };
     const down = (event: PointerEvent) => {
       if (
@@ -358,13 +369,12 @@ const Designer = ({
   }, []);
 
   useEffect(() => {
-    // In design mode the sheet holds the tools in use, so it stays open.
-    if (!isPhone || steps === 0 || latest.current.view.designing) return;
+    if (!isPhone || steps === 0) return;
     if (slider.current.held) {
       slider.current.pending = true;
       return;
     }
-    setView((current) => ({ ...current, sheet: false }));
+    setView((current) => ({ ...current, part: undefined }));
   }, [isPhone, steps, state]);
 
   useEffect(() => {
@@ -392,7 +402,7 @@ const Designer = ({
       both: current.both || target.side === "left",
       menu: "open",
       panel: "design",
-      sheet: true,
+      part: current.panel === "design" ? current.part : undefined,
       designing: { ...target },
       parked: undefined,
     }));
@@ -412,13 +422,17 @@ const Designer = ({
     setView((current) => ({
       ...current,
       panel,
-      sheet: true,
+      part: undefined,
       designing:
         panel === "design" ?
           (current.designing ?? { side: current.hand, finger: 1 })
         : undefined,
     }));
   };
+
+  const setPart = useCallback((part: string | undefined) => {
+    setView((current) => ({ ...current, part }));
+  }, []);
 
   const closeDesign = () => {
     const last = designing;
@@ -535,14 +549,20 @@ const Designer = ({
 
   const randomiseNail = () => {
     if (!designing) return;
-    // The polish is a hand-level choice, so only the decoration changes.
+    // Only the pattern changes: the polish and anything placed on the nail
+    // are the user's own choices and stay.
+    const nail = nailOf(state, designing);
     const design = {
-      ...randomDesign(
-        handOf(state, designing.side).form.length,
-        Math.random,
-        makeId,
-      ),
-      paint: nailOf(state, designing).paint,
+      ...nail,
+      elements: [
+        randomPattern(
+          nail.paint,
+          handOf(state, designing.side).form.length,
+          Math.random,
+          makeId,
+        ),
+        ...nail.elements.filter((element) => element.kind !== "pattern"),
+      ],
     };
 
     spread({ type: "replace", target: designing, design }, designing);
@@ -625,6 +645,11 @@ const Designer = ({
     return `${fill(copy.export.caption, { side: sideName(copy, side) })} · ${copy.export.length} ${String(hand.form.length)} · ${copy.presets[presetOf(hand.form)]}`;
   };
 
+  // Copies to the left hand are mirrored, so wherever the hands are
+  // compared, the left is taken as seen in a mirror.
+  const leftUnmirrored =
+    state.left === undefined ? undefined : mirroredHand(state.left);
+
   // Left little finger to right little finger, as the hands lie.
   const allNails = STAGE_ORDER.flatMap((side) =>
     (side === "left" ? FINGERS.toReversed() : FINGERS).map((finger) => ({
@@ -632,9 +657,15 @@ const Designer = ({
       finger,
     })),
   );
+  // The left hand is compared as seen in a mirror, like above.
   const nailsDiffer =
     new Set(
-      allNails.map(({ side, finger }) => nailKey(handOf(state, side), finger)),
+      allNails.map(({ side, finger }) =>
+        nailKey(
+          side === "left" ? (leftUnmirrored ?? state.right) : state.right,
+          finger,
+        ),
+      ),
     ).size > 1;
 
   // Renders the hands and tiles offscreen, then composes and hands over.
@@ -726,12 +757,10 @@ const Designer = ({
           both: true,
           designing: undefined,
           parked: current.designing,
-          sheet: true,
         }
       : {
           ...current,
           menu: "open",
-          sheet: true,
           designing: current.parked,
           parked: undefined,
         },
@@ -836,11 +865,10 @@ const Designer = ({
   // Only when the hands differ: one button makes the edited hand a copy of
   // the other, after which the left hand follows the right again.
   const handsDiffer =
-    state.left !== undefined &&
+    leftUnmirrored !== undefined &&
     FINGERS.some(
       (finger) =>
-        nailKey(state.right, finger) !==
-        nailKey(state.left ?? state.right, finger),
+        nailKey(state.right, finger) !== nailKey(leftUnmirrored, finger),
     );
   const copyOtherHand = () => {
     if (view.hand === "left" || !state.left) {
@@ -875,6 +903,69 @@ const Designer = ({
       </div>
     : undefined;
 
+  const formContent = (field: Field) => (
+    <>
+      <p className="mb-1 text-xs text-plum">{copy.hands.formHint}</p>
+      <FormSliders
+        form={editedHand.form}
+        copy={copy}
+        fields={[field]}
+        onChange={changeForm}
+      />
+    </>
+  );
+  const designContent = (part?: DesignPart) => (
+    <DesignPanel
+      part={part}
+      state={state}
+      target={designTarget}
+      selected={designing?.selected}
+      copy={copy}
+      prefix={part ? `nd-${part}` : "nd-panel"}
+      defs={SHARED_DEFS}
+      onTarget={(target) => {
+        openDesign(target, true);
+      }}
+      onSelect={selectElement}
+      onAdd={addElement}
+      onPatch={(id, patch) => {
+        spread(
+          { type: "update", target: designTarget, id, patch },
+          designTarget,
+        );
+      }}
+      onDelete={(id) => {
+        spread({ type: "remove", target: designTarget, id }, designTarget);
+      }}
+      onDuplicate={(id) => {
+        const newId = makeId();
+
+        spread(
+          { type: "duplicate", target: designTarget, id, newId },
+          designTarget,
+        );
+        selectElement(newId);
+      }}
+      onReorder={(id, by) => {
+        spread({ type: "reorder", target: designTarget, id, by }, designTarget);
+      }}
+      designAll={designAll}
+      onDesignAll={setDesignAllNails}
+      paintAll={paintAll}
+      onPaintAll={setPaintAll}
+      onRandom={randomiseNail}
+      onPaint={applyPaint}
+      onRandomPaint={randomiseColor}
+      onDone={closeDesign}
+    />
+  );
+  const designParts: readonly { key: DesignPart; title: string }[] = [
+    { key: "nails", title: copy.design.fingerStrip },
+    { key: "color", title: copy.panels.color },
+    { key: "add", title: copy.design.addElement },
+    { key: "layers", title: copy.design.layers },
+  ];
+
   const sections: readonly Section[] = [
     ...(["length", "shape", "sharpness"] as const).map((field): Section => ({
       key: field,
@@ -887,73 +978,21 @@ const Designer = ({
           }}
         />
       ),
-      content: (
-        <>
-          <p className="mb-1 text-xs text-plum">{copy.hands.formHint}</p>
-          <FormSliders
-            form={editedHand.form}
-            copy={copy}
-            fields={[field]}
-            onChange={changeForm}
-          />
-        </>
-      ),
+      content: formContent(field),
     })),
     {
       key: "design",
       title: copy.panels.design,
       content: (
         <div ref={panelReference} tabIndex={-1} className="outline-none">
-          <DesignPanel
-            state={state}
-            target={designTarget}
-            selected={designing?.selected}
-            copy={copy}
-            prefix="nd-panel"
-            defs={SHARED_DEFS}
-            onTarget={(target) => {
-              openDesign(target, true);
-            }}
-            onSelect={selectElement}
-            onAdd={addElement}
-            onPatch={(id, patch) => {
-              spread(
-                { type: "update", target: designTarget, id, patch },
-                designTarget,
-              );
-            }}
-            onDelete={(id) => {
-              spread(
-                { type: "remove", target: designTarget, id },
-                designTarget,
-              );
-            }}
-            onDuplicate={(id) => {
-              const newId = makeId();
-
-              spread(
-                { type: "duplicate", target: designTarget, id, newId },
-                designTarget,
-              );
-              selectElement(newId);
-            }}
-            onReorder={(id, by) => {
-              spread(
-                { type: "reorder", target: designTarget, id, by },
-                designTarget,
-              );
-            }}
-            designAll={designAll}
-            onDesignAll={setDesignAllNails}
-            paintAll={paintAll}
-            onPaintAll={setPaintAll}
-            onRandom={randomiseNail}
-            onPaint={applyPaint}
-            onRandomPaint={randomiseColor}
-            onDone={closeDesign}
-          />
+          {designContent()}
         </div>
       ),
+      parts: designParts.map((entry) => ({
+        key: entry.key,
+        title: entry.title,
+        content: designContent(entry.key),
+      })),
     },
   ];
 
@@ -976,7 +1015,9 @@ const Designer = ({
           prefix={`nd-${side}`}
           fit={isPhone ? "width" : "height"}
           className={
-            isPhone ? "h-full w-full" : "h-full max-h-full w-auto max-w-full"
+            isPhone ? "h-full w-full" : (
+              "h-[min(100%,calc((100cqw_-_7rem)*0.55))] w-auto max-w-full"
+            )
           }
           nailLabels={nailLabels[side]}
           onNail={onNail}
@@ -1043,9 +1084,7 @@ const Designer = ({
           })}
         </div>
       </div>
-    : <div
-        className={`grid h-full min-h-0 transition-[grid-template-columns] duration-500 ${EASE} motion-reduce:transition-none ${bothShown ? "grid-cols-[1fr_auto_1fr]" : "grid-cols-[0fr_auto_1fr]"}`}
-      >
+    : <div className="grid h-full min-h-0 grid-cols-[1fr_auto_1fr]">
         {STAGE_ORDER.map((side) => {
           const shown = bothShown || side === "right";
 
@@ -1091,11 +1130,9 @@ const Designer = ({
               open={view.panel}
               onOpen={setPanel}
               header={menuHeader}
-              expanded={view.sheet}
-              onExpanded={(sheet) => {
-                setView((current) => ({ ...current, sheet }));
-              }}
-              label={copy.toolbar.menu}
+              part={view.part}
+              onPart={setPart}
+              closeLabel={copy.toolbar.close}
             />
           }
         </div>
@@ -1115,14 +1152,17 @@ const Designer = ({
               </p>
             </div>
           </div>
-          <div className="relative mt-4 min-h-0 flex-1">
-            {/* One menu card: a column beside the single hand, a floating
-                card over the hand not being edited, or gone. The stage's
-                left padding makes room for the column and closes up as the
-                card floats away. */}
+          {/* Desktop hands are sized as if both were shown (half the stage
+              less the toolbar, at the hand's 1.1 aspect), so the hand keeps
+              its size when the menu opens and the layout changes around it. */}
+          <div className="relative mt-4 min-h-0 flex-1 @container">
+            {/* The stage keeps its three columns in every state, so the
+                hands never move; the one menu card floats over the left
+                hand's column while that hand is away, over the hand not
+                being edited, or fades out. */}
             <section
               aria-labelledby={titleId}
-              className={`relative h-full min-h-0 transition-[padding-left] duration-500 ${EASE} motion-reduce:transition-none ${!view.both && !menuHidden ? "pl-[27.5rem]" : "pl-0"}`}
+              className="relative h-full min-h-0"
             >
               <h2 id={titleId} className="sr-only">
                 {copy.panels.design}
@@ -1135,7 +1175,7 @@ const Designer = ({
                   "pointer-events-none scale-95 opacity-0"
                 : "scale-100 opacity-100"
               } ${
-                !view.both ? "left-0 h-full"
+                !view.both ? "left-[calc(25%-13rem)] h-full"
                 : view.hand === "left" ? "left-[calc(75%-13rem)] h-[92%]"
                 : "left-[calc(25%-13rem)] h-[92%]"
               }`}

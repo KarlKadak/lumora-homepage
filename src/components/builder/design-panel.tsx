@@ -183,7 +183,11 @@ const iconChip =
 const sectionLabel =
   "text-xs font-semibold tracking-widest text-plum uppercase";
 
+// One block of the panel on its own, for the phone's popups.
+type DesignPart = "nails" | "color" | "add" | "layers";
+
 interface DesignPanelProperties {
+  part?: DesignPart;
   state: DesignerState;
   target: Target;
   selected: string | undefined;
@@ -212,6 +216,7 @@ interface DesignPanelProperties {
 }
 
 const DesignPanel = ({
+  part,
   state,
   target,
   selected,
@@ -256,147 +261,160 @@ const DesignPanel = ({
     { kind: "stone", label: copy.design.stones },
   ];
 
+  const shows = (block: DesignPart) => part === undefined || part === block;
+
   if (!design) return undefined;
 
   return (
     <div className="space-y-5">
-      <details className="group rounded-2xl bg-white/60 px-3 py-2">
-        <summary className="cursor-pointer list-none text-sm font-semibold text-burgundy">
-          <span className="mr-2 inline-block transition-transform group-open:rotate-90">
-            ›
-          </span>
-          {copy.design.fingerStrip}
-          <span className="ml-2 font-normal text-plum">
-            {designAll ?
-              copy.design.allNails
-            : `${sideName(copy, target.side)} · ${fingerName(copy, target.finger)}`
-            }
-          </span>
-        </summary>
-        {/* Only the edited hand's nails; the hand is chosen on the stage. */}
-        <div className="mt-2 flex gap-3 overflow-x-auto pb-1">
-          {[target.side].map((side) => (
-            <div key={side} className="flex shrink-0 flex-col gap-1">
-              <div className="flex gap-0.5">
-                {fingersOf(side).map((finger) => {
-                  // No nail is singled out while edits go to all of them.
-                  const active =
-                    !designAll &&
-                    side === target.side &&
-                    finger === target.finger;
-                  const stripHand = handOf(state, side);
-                  const stripDesign = stripHand.nails[finger];
+      {shows("nails") && (
+        <details
+          className="group rounded-2xl bg-white/60 px-3 py-2"
+          open={part !== undefined}
+        >
+          <summary className="cursor-pointer list-none text-sm font-semibold text-burgundy">
+            <span className="mr-2 inline-block transition-transform group-open:rotate-90">
+              ›
+            </span>
+            {copy.design.fingerStrip}
+            <span className="ml-2 font-normal text-plum">
+              {designAll ?
+                copy.design.allNails
+              : `${sideName(copy, target.side)} · ${fingerName(copy, target.finger)}`
+              }
+            </span>
+          </summary>
+          {/* Only the edited hand's nails; the hand is chosen on the stage. */}
+          <div className="mt-2 flex gap-3 overflow-x-auto pb-1">
+            {[target.side].map((side) => (
+              <div key={side} className="flex shrink-0 flex-col gap-1">
+                <div className="flex gap-0.5">
+                  {fingersOf(side).map((finger) => {
+                    // No nail is singled out while edits go to all of them.
+                    const active =
+                      !designAll &&
+                      side === target.side &&
+                      finger === target.finger;
+                    const stripHand = handOf(state, side);
+                    const stripDesign = stripHand.nails[finger];
 
-                  return (
-                    stripDesign && (
-                      <button
-                        key={finger}
-                        type="button"
-                        aria-label={`${sideName(copy, side)}, ${fingerName(copy, finger)}`}
-                        aria-pressed={active}
-                        onClick={() => {
-                          onTarget({ side, finger });
-                        }}
-                        className={`flex h-11 w-7 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rose ${active ? "bg-white ring-2 ring-rose ring-inset" : ""}`}
-                      >
-                        <NailView
-                          design={stripDesign}
-                          form={stripHand.form}
-                          prefix={`${prefix}-strip-${side}-${String(finger)}`}
-                          defs={defs}
-                          className="h-9 text-burgundy"
-                        />
-                      </button>
-                    )
-                  );
-                })}
+                    return (
+                      stripDesign && (
+                        <button
+                          key={finger}
+                          type="button"
+                          aria-label={`${sideName(copy, side)}, ${fingerName(copy, finger)}`}
+                          aria-pressed={active}
+                          onClick={() => {
+                            onTarget({ side, finger });
+                          }}
+                          className={`flex h-11 w-7 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rose ${active ? "bg-white ring-2 ring-rose ring-inset" : ""}`}
+                        >
+                          <NailView
+                            design={stripDesign}
+                            form={stripHand.form}
+                            prefix={`${prefix}-strip-${side}-${String(finger)}`}
+                            defs={defs}
+                            className="h-9 text-burgundy"
+                          />
+                        </button>
+                      )
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </details>
+            ))}
+          </div>
+        </details>
+      )}
 
-      <details className="group rounded-2xl bg-white/60 px-3 py-2" open>
-        <summary className="cursor-pointer list-none text-sm font-semibold text-burgundy">
-          <span className="mr-2 inline-block transition-transform group-open:rotate-90">
-            ›
-          </span>
-          {copy.panels.color}
-        </summary>
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <Toggle
-            value={paintAll}
-            copy={copy}
-            onChange={(all) => {
-              onPaintAll(all);
-              if (all)
-                onPaint(design.paint, paintName(copy, design.paint), true);
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => {
-              onRandomPaint(paintAll);
-            }}
-            className={chip}
-          >
-            {ICONS.shuffle}
-            <span className="ml-1.5">{copy.toolbar.random}</span>
-          </button>
-        </div>
-        <div className="pt-2">
-          <ColorPanel
-            value={design.paint}
-            copy={copy}
-            prefix={defs}
-            onChange={(paint, name) => {
-              onPaint(paint, name, paintAll);
-            }}
-          />
-        </div>
-      </details>
-
-      <div className="flex items-center justify-between gap-2">
-        <Toggle value={designAll} copy={copy} onChange={onDesignAll} />
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between gap-2">
-          <p className={sectionLabel}>{copy.design.addElement}</p>
-          <button type="button" onClick={onRandom} className={chip}>
-            {ICONS.shuffle}
-            <span className="ml-1.5">{copy.toolbar.random}</span>
-          </button>
-        </div>
-        <div role="tablist" className="mt-2 flex gap-1">
-          {tabs.map(({ kind, label }) => (
-            <button
-              key={kind}
-              type="button"
-              role="tab"
-              aria-selected={tab === kind}
-              onClick={() => {
-                setTab(kind);
+      {shows("color") && (
+        <details className="group rounded-2xl bg-white/60 px-3 py-2" open>
+          <summary className="cursor-pointer list-none text-sm font-semibold text-burgundy">
+            <span className="mr-2 inline-block transition-transform group-open:rotate-90">
+              ›
+            </span>
+            {copy.panels.color}
+          </summary>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <Toggle
+              value={paintAll}
+              copy={copy}
+              onChange={(all) => {
+                onPaintAll(all);
+                if (all)
+                  onPaint(design.paint, paintName(copy, design.paint), true);
               }}
-              className={`${chip} ${tab === kind ? chipPressed : ""}`}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                onRandomPaint(paintAll);
+              }}
+              className={chip}
             >
-              {label}
+              {ICONS.shuffle}
+              <span className="ml-1.5">{copy.toolbar.random}</span>
             </button>
-          ))}
-        </div>
-        <div className="mt-2">
-          <Catalogue
-            kind={tab}
-            form={hand.form}
-            copy={copy}
-            prefix={prefix}
-            defs={defs}
-            onAdd={onAdd}
-          />
-        </div>
-      </div>
+          </div>
+          <div className="pt-2">
+            <ColorPanel
+              value={design.paint}
+              copy={copy}
+              prefix={defs}
+              onChange={(paint, name) => {
+                onPaint(paint, name, paintAll);
+              }}
+            />
+          </div>
+        </details>
+      )}
 
-      {design.elements.length > 0 && (
+      {shows("add") && (
+        <div className="flex items-center justify-between gap-2">
+          <Toggle value={designAll} copy={copy} onChange={onDesignAll} />
+        </div>
+      )}
+
+      {shows("add") && (
+        <div>
+          <div className="flex items-center justify-between gap-2">
+            <p className={sectionLabel}>{copy.design.addElement}</p>
+            <button type="button" onClick={onRandom} className={chip}>
+              {ICONS.shuffle}
+              <span className="ml-1.5">{copy.toolbar.random}</span>
+            </button>
+          </div>
+          <div role="tablist" className="mt-2 flex gap-1">
+            {tabs.map(({ kind, label }) => (
+              <button
+                key={kind}
+                type="button"
+                role="tab"
+                aria-selected={tab === kind}
+                onClick={() => {
+                  setTab(kind);
+                }}
+                className={`${chip} ${tab === kind ? chipPressed : ""}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2">
+            <Catalogue
+              kind={tab}
+              form={hand.form}
+              copy={copy}
+              prefix={prefix}
+              defs={defs}
+              onAdd={onAdd}
+            />
+          </div>
+        </div>
+      )}
+
+      {shows("layers") && design.elements.length > 0 && (
         <div>
           <p className={sectionLabel}>{copy.design.layers}</p>
           {/* Topmost first, as they lie on the nail. */}
@@ -451,7 +469,9 @@ const DesignPanel = ({
         </div>
       )}
 
-      {element && definition ?
+      {!shows("layers") ?
+        undefined
+      : element && definition ?
         <div className="space-y-3 rounded-2xl bg-white/60 p-3">
           <p className="text-sm font-semibold text-burgundy">
             {copy.design.selected}:{" "}
@@ -632,13 +652,15 @@ const DesignPanel = ({
         </p>
       }
 
-      <button
-        type="button"
-        onClick={onDone}
-        className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full bg-rose px-6 py-3 text-sm font-semibold text-burgundy-deep transition-colors hover:bg-rose-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose"
-      >
-        {copy.design.done}
-      </button>
+      {part === undefined && (
+        <button
+          type="button"
+          onClick={onDone}
+          className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full bg-rose px-6 py-3 text-sm font-semibold text-burgundy-deep transition-colors hover:bg-rose-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose"
+        >
+          {copy.design.done}
+        </button>
+      )}
     </div>
   );
 };
@@ -651,3 +673,5 @@ const percentFromTip = (y: number, form: NailForm) => {
 };
 
 export { DesignPanel, FINGER_NAMES, fingerName, percentFromTip, sideName };
+
+export type { DesignPart };

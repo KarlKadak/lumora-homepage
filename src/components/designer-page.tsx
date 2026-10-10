@@ -1,11 +1,10 @@
-import { Designer } from "@/components/builder/designer";
+import { Designer } from "@/components/builder/designer-client";
 import { Footer, Header } from "@/components/site-chrome";
 import type { Locale } from "@/content/dictionary";
 import { getDictionary } from "@/content/dictionary";
 
 // The nail designer page: the site header, the designer and a compact
-// footer. The mobile dock is left out because the designer's bottom sheet
-// occupies that space.
+// footer.
 const DesignerPage = ({ locale }: Readonly<{ locale: Locale }>) => {
   const dictionary = getDictionary(locale);
 

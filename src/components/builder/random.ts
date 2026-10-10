@@ -88,6 +88,14 @@ const randomElement = (
   };
 };
 
+// A pattern to suit the polish, for the design section's shuffle.
+const randomPattern = (
+  paint: Paint,
+  length: Level,
+  random: Random,
+  makeId: () => string,
+): NailElement => randomElement("pattern", paint, length, random, makeId);
+
 // A polish, perhaps a pattern, and a few stones or illustrations.
 const randomDesign = (
   length: Level,
@@ -139,4 +147,11 @@ const randomSet = (random: Random, makeId: () => string): HandState => {
   };
 };
 
-export { randomDesign, randomForm, randomLevel, randomPaint, randomSet };
+export {
+  randomDesign,
+  randomForm,
+  randomLevel,
+  randomPaint,
+  randomPattern,
+  randomSet,
+};

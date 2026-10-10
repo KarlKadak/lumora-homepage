@@ -199,7 +199,10 @@ const useZoom = (
     const from = parseViewBox(svg.getAttribute("viewBox"));
     const handle = { frame: 0, settled: false };
 
-    if (reducedMotion()) {
+    // The first fit is the drawing's starting point, so it is set outright;
+    // later fits glide from the previous box.
+    if (reducedMotion() || !svg.dataset.fitted) {
+      svg.dataset.fitted = "true";
       svg.setAttribute("viewBox", viewBoxString(to));
       handle.settled = true;
     } else {
@@ -301,12 +304,14 @@ const HandDrawing = ({
     fit,
   );
 
+  // The entrance is a quick sketch: the whole hand is drawn within about a
+  // second, with no wait for the home page's intro.
   const draw = (seconds: number, duration?: string) =>
     entrance ?
       {
         className: "nail-draw",
         pathLength: 1,
-        style: { ...delay(seconds), animationDuration: duration },
+        style: { ...delay(seconds, false), animationDuration: duration },
       }
     : {};
 
@@ -375,20 +380,20 @@ const HandDrawing = ({
                 key={index}
                 d={path}
                 strokeWidth={1.5 * LINE}
-                {...draw(0, "1.6s")}
+                {...draw(0, "0.7s")}
               />
             ))}
             <path
               d={BUILDER_HAND.details}
               strokeWidth={1.2 * LINE}
               opacity="0.7"
-              {...draw(1.3)}
+              {...draw(0.55, "0.5s")}
             />
             <path
               d={WRIST_CREASE}
               strokeWidth={0.9 * LINE}
               opacity="0.4"
-              {...draw(1.9, "0.8s")}
+              {...draw(0.8, "0.4s")}
             />
           </g>
           {BUILDER_HAND.layers.map((layer, index) => (
@@ -396,13 +401,13 @@ const HandDrawing = ({
               <path
                 d={layer.outline}
                 strokeWidth={1.5 * LINE}
-                {...draw(0.5 + (5 - index) * 0.15, "1.2s")}
+                {...draw(0.2 + (5 - index) * 0.07, "0.55s")}
               />
               <path
                 d={layer.details}
                 strokeWidth={0.9 * LINE}
                 opacity="0.4"
-                {...draw(1.9, "0.8s")}
+                {...draw(0.8, "0.4s")}
               />
             </g>
           ))}
@@ -443,7 +448,7 @@ const HandDrawing = ({
                 <path
                   d={rim}
                   strokeWidth={1.2 * LINE}
-                  {...draw(1.5 + finger * 0.1)}
+                  {...draw(0.65 + finger * 0.05, "0.45s")}
                 />
                 <path
                   d={placePath(CUTICLE, pose)}
