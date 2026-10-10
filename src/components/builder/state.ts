@@ -578,6 +578,7 @@ export {
   nailKey,
   nailOf,
   pack,
+  paintKey,
   reduce,
   reduceHistory,
   sameDesign,

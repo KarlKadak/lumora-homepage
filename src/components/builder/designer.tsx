@@ -48,18 +48,21 @@ import type {
   Action,
   DesignerState,
   Finger,
+  NailDesign,
   NailElement,
   Paint,
   Side,
   Target,
 } from "@/components/builder/state";
 import {
+  designKey,
   FINGERS,
   handOf,
   INITIAL_HISTORY,
   mirroredHand,
   nailKey,
   nailOf,
+  paintKey,
   reduceHistory,
   SIDES,
 } from "@/components/builder/state";
@@ -232,6 +235,23 @@ const ShuffleButton = ({
     {ICONS.shuffle}
   </button>
 );
+
+// Whether the ten nails differ under `key`: by whole design, or by polish
+// alone. The left hand is compared as seen in a mirror, since copies onto it
+// are mirrored.
+const nailsVary = (state: DesignerState, key: (nail: NailDesign) => string) => {
+  const left = state.left === undefined ? undefined : mirroredHand(state.left);
+
+  return (
+    new Set(
+      SIDES.flatMap((side) =>
+        (side === "left" ? (left ?? state.right) : state.right).nails.map(
+          (nail) => key(nail),
+        ),
+      ),
+    ).size > 1
+  );
+};
 
 const segment =
   "inline-flex min-h-10 cursor-pointer items-center justify-center rounded-full px-4 text-xs font-semibold transition-[background-color,color] duration-300 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rose disabled:cursor-default disabled:opacity-40";
@@ -418,11 +438,20 @@ const Designer = ({
 
   // `single` narrows the edits to that nail: picking from the strip, or a
   // nail on the hand while already designing; entering design mode from
-  // the stage or the tab keeps the default of all nails.
+  // the stage or the tab keeps the default of all nails. Nails that already
+  // differ (after a random set, say) are edited one at a time either way, so
+  // the first edit does not quietly overwrite the others; likewise the polish
+  // when it varies.
   const openDesign = useCallback((target: Target, single = false) => {
     if (single) {
       setDesignAll(false);
       setPaintAll(false);
+    } else {
+      const { state: current } = latest.current;
+
+      if (nailsVary(current, designKey)) setDesignAll(false);
+      if (nailsVary(current, (nail) => paintKey(nail.paint)))
+        setPaintAll(false);
     }
     setView((current) => ({
       ...current,
@@ -442,7 +471,8 @@ const Designer = ({
   // The arrows beside the editor step through all ten nails in the order
   // they lie on the stage: the left hand from its little finger inwards, then
   // the right hand from its thumb outwards. Past either end they wrap to the
-  // other hand's little finger. The all-nails toggles stay as they were.
+  // other hand's little finger. The all-nails toggles stay as they were,
+  // unless the nails differ.
   const stepNail = useCallback(
     (target: Target, by: 1 | -1) => {
       const count = FINGERS.length;
