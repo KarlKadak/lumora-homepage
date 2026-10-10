@@ -1,15 +1,29 @@
 import type { MetadataRoute } from "next";
-import { LOCALES, localeUrl, type Page } from "@/content/dictionary";
+import {
+  type Locale,
+  LOCALES,
+  localeUrl,
+  type Page,
+} from "@/content/dictionary";
 
 const PAGES: readonly Page[] = ["home", "designer"];
+
+// Estonian is the default for visitors whose language we do not serve, as in
+// the pages' own hreflang links.
+const DEFAULT_LOCALE: Locale = "et";
 
 // Static export: Next writes this out as /sitemap.xml at build time. Each
 // language page lists the others as alternates, mirroring the hreflang links.
 const sitemap = (): MetadataRoute.Sitemap =>
   PAGES.flatMap((page) => {
-    const languages = Object.fromEntries(
-      LOCALES.map((locale) => [locale, localeUrl(locale, page)]),
-    );
+    const entries: [string, string][] = LOCALES.map((locale) => [
+      locale,
+      localeUrl(locale, page),
+    ]);
+    const languages: Record<string, string> = Object.fromEntries([
+      ...entries,
+      ["x-default", localeUrl(DEFAULT_LOCALE, page)],
+    ]);
 
     return LOCALES.map((locale) => ({
       url: localeUrl(locale, page),

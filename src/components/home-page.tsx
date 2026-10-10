@@ -3,6 +3,7 @@ import Accordion from "@/components/accordion";
 import HeroScene from "@/components/hero-scene";
 import { BadgeRing, delay, NailGlyph } from "@/components/nail-art";
 import { FINISHES, FinishSwatch } from "@/components/nail-finishes";
+import { LocalBusinessSchema } from "@/components/schema";
 import {
   eyebrow,
   Footer,
@@ -14,14 +15,10 @@ import {
 } from "@/components/site-chrome";
 import type { Dictionary, Locale, PerkKind } from "@/content/dictionary";
 import {
-  EMAIL,
   getDictionary,
   INSTAGRAM_HANDLE,
   INSTAGRAM_URL,
   localePagePath,
-  localeUrl,
-  SITE_NAME,
-  SITE_URL,
 } from "@/content/dictionary";
 
 const MAP_SOURCE =
@@ -467,42 +464,6 @@ const Visit = ({ visit }: Readonly<{ visit: Dictionary["visit"] }>) => {
         </div>
       </div>
     </section>
-  );
-};
-
-// schema.org description of the salon for search engines. The street address
-// and opening hours join once they are known; "Tallinn" is enough for local
-// results until then. "<" is escaped so the JSON can never close the script.
-const LocalBusinessSchema = ({
-  locale,
-  meta,
-}: Readonly<{ locale: Locale; meta: Dictionary["meta"] }>) => {
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "NailSalon",
-    "@id": `${SITE_URL}/#salon`,
-    name: SITE_NAME,
-    url: localeUrl(locale),
-    description: meta.description,
-    image: `${SITE_URL}/og-${locale}.png`,
-    logo: `${SITE_URL}/icon.png`,
-    email: EMAIL,
-    sameAs: [INSTAGRAM_URL],
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: "Tallinn",
-      addressCountry: "EE",
-    },
-    areaServed: { "@type": "City", name: "Tallinn" },
-    inLanguage: locale,
-  };
-  const json = JSON.stringify(schema).replaceAll("<", "\\u003c");
-
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: json }}
-    />
   );
 };
 

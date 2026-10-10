@@ -1,4 +1,5 @@
 import { Designer } from "@/components/builder/designer-client";
+import { DesignerSchema } from "@/components/schema";
 import { Footer, Header } from "@/components/site-chrome";
 import type { Locale } from "@/content/dictionary";
 import { getDictionary } from "@/content/dictionary";
@@ -10,6 +11,7 @@ const DesignerPage = ({ locale }: Readonly<{ locale: Locale }>) => {
 
   return (
     <>
+      <DesignerSchema locale={locale} meta={dictionary.designer.meta} />
       <Header locale={locale} page="designer" nav={dictionary.nav} />
       <main className="flex-1">
         <Designer locale={locale} copy={dictionary.designer} />
