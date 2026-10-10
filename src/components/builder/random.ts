@@ -96,7 +96,8 @@ const randomPattern = (
   makeId: () => string,
 ): NailElement => randomElement("pattern", paint, length, random, makeId);
 
-// A polish, perhaps a pattern, and a few stones or illustrations.
+// A polish and, half the time, a pattern: nothing else, so a random set
+// stays a clean starting point rather than a finished design.
 const randomDesign = (
   length: Level,
   random: Random,
@@ -104,20 +105,11 @@ const randomDesign = (
 ): NailDesign => {
   const paint = randomPaint(random);
   const pattern =
-    random() < 0.55 ?
+    random() < 0.5 ?
       [randomElement("pattern", paint, length, random, makeId)]
     : [];
-  const extras = Array.from({ length: Math.floor(random() * 3) }, () =>
-    randomElement(
-      random() < 0.5 ? "stone" : "illustration",
-      paint,
-      length,
-      random,
-      makeId,
-    ),
-  );
 
-  return { paint, elements: [...pattern, ...extras] };
+  return { paint, elements: pattern };
 };
 
 const withFreshIds = (

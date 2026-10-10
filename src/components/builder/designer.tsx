@@ -1105,7 +1105,7 @@ const Designer = ({
                 form={hand.form}
                 prefix={`nd-edit-${side}`}
                 defs={SHARED_DEFS}
-                className="aspect-[4/11] h-full max-w-[60%]"
+                className={`h-full ${isPhone ? "max-w-[calc(100%-6rem)]" : "max-w-[60%]"}`}
                 selected={editing.selected}
                 onSelect={selectElement}
                 onChange={(id, patch) => {

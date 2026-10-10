@@ -33,6 +33,8 @@ interface NailViewProperties {
   // Outline the nail in plum instead of pearl, so a pale pattern reads
   // against a pale background (the catalogue tiles).
   outlined?: boolean;
+  // A tighter view than the default, which has room for the longest nail.
+  viewBox?: string;
   svgRef?: React.Ref<SVGSVGElement>;
   children?: React.ReactNode;
 }
@@ -46,6 +48,7 @@ const NailView = ({
   defs,
   className,
   outlined = false,
+  viewBox = VIEW,
   svgRef,
   children,
 }: Readonly<NailViewProperties>) => {
@@ -56,7 +59,7 @@ const NailView = ({
   return (
     <svg
       ref={svgRef}
-      viewBox={VIEW}
+      viewBox={viewBox}
       className={className}
       fill="none"
       stroke={PALETTE.pearl}
@@ -140,7 +143,7 @@ interface Drag {
 
 interface NailEditorProperties extends Omit<
   NailViewProperties,
-  "children" | "svgRef"
+  "children" | "svgRef" | "viewBox"
 > {
   selected: string | undefined;
   onSelect: (id: string | undefined) => void;
@@ -152,6 +155,9 @@ interface NailEditorProperties extends Omit<
 }
 
 const degrees = (radians: number) => (radians * 180) / Math.PI;
+
+// The handles' hit radius, in nail units: a comfortable thumb target.
+const HIT = 12;
 
 // A red ×, with a hit circle far larger than the drawn one, that removes
 // the selected element.
@@ -185,19 +191,19 @@ const DeleteHandle = ({
       }
     }}
   >
-    <circle cx={cx} cy={cy} r="9" fill="transparent" stroke="none" />
+    <circle cx={cx} cy={cy} r={HIT} fill="transparent" stroke="none" />
     <circle
       cx={cx}
       cy={cy}
-      r="3.6"
+      r="5.2"
       fill="#d8323c"
       stroke={PALETTE.pearl}
-      strokeWidth="0.6"
+      strokeWidth="0.8"
     />
     <path
-      d={`M${(cx - 1.6).toFixed(1)} ${(cy - 1.6).toFixed(1)}l3.2 3.2M${(cx + 1.6).toFixed(1)} ${(cy - 1.6).toFixed(1)}l-3.2 3.2`}
+      d={`M${(cx - 2.2).toFixed(1)} ${(cy - 2.2).toFixed(1)}l4.4 4.4M${(cx + 2.2).toFixed(1)} ${(cy - 2.2).toFixed(1)}l-4.4 4.4`}
       stroke={PALETTE.pearl}
-      strokeWidth="0.9"
+      strokeWidth="1.2"
       strokeLinecap="round"
     />
   </g>
@@ -233,6 +239,11 @@ const NailEditor = ({
   const frame = useRef(0);
   const [hintId] = useState(() => `${prefix}-hint`);
   const tip = tipY(form.length);
+  // The view hugs this nail's length, with room above for the handles of
+  // an element at the tip, so a short nail is drawn as large as a long one.
+  const viewTop = tip - 30;
+  const viewHeight = 80 - viewTop;
+  const viewBox = `-40 ${String(viewTop)} 80 ${String(viewHeight)}`;
   const bounds = {
     minX: -24 - SLACK,
     maxX: 24 + SLACK,
@@ -468,6 +479,7 @@ const NailEditor = ({
 
     <div
       className={className}
+      style={{ aspectRatio: `80 / ${String(viewHeight)}` }}
       onPointerDown={(event) => {
         if (
           event.target instanceof Element &&
@@ -482,6 +494,7 @@ const NailEditor = ({
         form={form}
         prefix={prefix}
         defs={defs}
+        viewBox={viewBox}
         svgRef={svgReference}
         className="h-full w-full touch-none select-none"
       >
@@ -560,7 +573,7 @@ const NailEditor = ({
                 />
                 <DeleteHandle
                   cx={30}
-                  cy={tip - 6}
+                  cy={tip - 8}
                   label={deleteLabel}
                   onDelete={() => {
                     onDelete(selectedElement.id);
@@ -584,7 +597,7 @@ const NailEditor = ({
                   x1="0"
                   y1={(-definition.height * selectedElement.scale) / 2 - 2}
                   x2="0"
-                  y2={(-definition.height * selectedElement.scale) / 2 - 12}
+                  y2={(-definition.height * selectedElement.scale) / 2 - 14}
                   strokeWidth="0.8"
                   pointerEvents="none"
                 />
@@ -601,17 +614,17 @@ const NailEditor = ({
                   onPointerCancel={endDrag}
                 >
                   <circle
-                    cy={(-definition.height * selectedElement.scale) / 2 - 12}
-                    r="9"
+                    cy={(-definition.height * selectedElement.scale) / 2 - 14}
+                    r={HIT}
                     fill="transparent"
                     stroke="none"
                   />
                   <circle
-                    cy={(-definition.height * selectedElement.scale) / 2 - 12}
-                    r="2.6"
+                    cy={(-definition.height * selectedElement.scale) / 2 - 14}
+                    r="4.2"
                     fill={PALETTE.rose}
                     stroke={PALETTE.burgundyDeep}
-                    strokeWidth="0.6"
+                    strokeWidth="0.8"
                   />
                 </g>
                 {resizable(selectedElement) && (
@@ -628,24 +641,25 @@ const NailEditor = ({
                     <circle
                       cx={(definition.width * selectedElement.scale) / 2 + 2}
                       cy={(definition.height * selectedElement.scale) / 2 + 2}
-                      r="9"
+                      r={HIT}
                       fill="transparent"
                       stroke="none"
                     />
                     <rect
-                      x={(definition.width * selectedElement.scale) / 2 - 0.4}
-                      y={(definition.height * selectedElement.scale) / 2 - 0.4}
-                      width="4.8"
-                      height="4.8"
+                      x={(definition.width * selectedElement.scale) / 2 - 1.8}
+                      y={(definition.height * selectedElement.scale) / 2 - 1.8}
+                      width="7.6"
+                      height="7.6"
+                      rx="1"
                       fill={PALETTE.rose}
                       stroke={PALETTE.burgundyDeep}
-                      strokeWidth="0.6"
+                      strokeWidth="0.8"
                     />
                   </g>
                 )}
                 <DeleteHandle
-                  cx={(definition.width * selectedElement.scale) / 2 + 6}
-                  cy={(-definition.height * selectedElement.scale) / 2 - 6}
+                  cx={(definition.width * selectedElement.scale) / 2 + 8}
+                  cy={(-definition.height * selectedElement.scale) / 2 - 8}
                   label={deleteLabel}
                   onDelete={() => {
                     onDelete(selectedElement.id);
