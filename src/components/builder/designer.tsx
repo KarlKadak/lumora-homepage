@@ -190,6 +190,34 @@ const focusNail = (target: Target) => {
 const EASE = "ease-[cubic-bezier(0.2,0.7,0.2,1)]";
 
 // A small shuffle button in a section's header: randomises that section.
+// A round arrow beside the nail editor, stepping to the neighbouring nail.
+const NailArrow = ({
+  direction,
+  label,
+  onClick,
+}: Readonly<{ direction: 1 | -1; label: string; onClick: () => void }>) => (
+  <button
+    type="button"
+    aria-label={label}
+    title={label}
+    onClick={onClick}
+    className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-pearl/15 text-rose transition-colors hover:bg-rose hover:text-burgundy-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose"
+  >
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-5"
+      aria-hidden="true"
+    >
+      <path d={direction === 1 ? "m9 6 6 6-6 6" : "m15 6-6 6 6 6"} />
+    </svg>
+  </button>
+);
+
 const ShuffleButton = ({
   label,
   onClick,
@@ -410,6 +438,29 @@ const Designer = ({
       panelReference.current?.focus({ preventScroll: true });
     }, 50);
   }, []);
+
+  // The arrows beside the editor step through all ten nails in the order
+  // they lie on the stage: the left hand from its little finger inwards, then
+  // the right hand from its thumb outwards. Past either end they wrap to the
+  // other hand's little finger. The all-nails toggles stay as they were.
+  const stepNail = useCallback(
+    (target: Target, by: 1 | -1) => {
+      const count = FINGERS.length;
+      const position =
+        target.side === "left" ?
+          count - 1 - target.finger
+        : count + target.finger;
+      const next = (position + by + 2 * count) % (2 * count);
+      const side: Side = next < count ? "left" : "right";
+      const finger = (
+        side === "left" ?
+          count - 1 - next
+        : next - count) as Finger;
+
+      openDesign({ side, finger });
+    },
+    [openDesign],
+  );
 
   const onNail = useCallback(
     (side: Side, finger: Finger) => {
@@ -923,9 +974,6 @@ const Designer = ({
       copy={copy}
       prefix={part ? `nd-${part}` : "nd-panel"}
       defs={SHARED_DEFS}
-      onTarget={(target) => {
-        openDesign(target, true);
-      }}
       onSelect={selectElement}
       onAdd={addElement}
       onPatch={(id, patch) => {
@@ -960,7 +1008,6 @@ const Designer = ({
     />
   );
   const designParts: readonly { key: DesignPart; title: string }[] = [
-    { key: "nails", title: copy.design.fingerStrip },
     { key: "color", title: copy.panels.color },
     { key: "add", title: copy.design.addElement },
     { key: "layers", title: copy.design.layers },
@@ -1027,32 +1074,73 @@ const Designer = ({
           entrance
         />
         {editing && design && (
-          <NailEditor
-            design={design}
-            form={hand.form}
-            prefix={`nd-edit-${side}`}
-            defs={SHARED_DEFS}
-            className={`absolute inset-0 flex items-center justify-center transition-[opacity,transform] duration-400 ${EASE} motion-reduce:transition-none ${editorShown ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"}`}
-            selected={editing.selected}
-            onSelect={selectElement}
-            onChange={(id, patch) => {
-              spread({ type: "update", target: editing, id, patch }, editing);
-            }}
-            onDelete={(id) => {
-              spread({ type: "remove", target: editing, id }, editing);
-              selectElement(undefined);
-            }}
-            elementLabel={elementLabel}
-            deleteLabel={copy.design.delete}
-            hint={copy.design.elementHint}
-          />
+          <div
+            className={`absolute inset-0 flex flex-col items-center gap-2 transition-[opacity,transform] duration-400 ${EASE} motion-reduce:transition-none ${editorShown ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"}`}
+          >
+            {/* Which nail is being edited, and whether edits reach them all. */}
+            <p
+              aria-live="polite"
+              className="shrink-0 rounded-full bg-burgundy-deep/70 px-3.5 py-1.5 text-xs font-semibold text-pearl"
+            >
+              {sideName(copy, side)}
+              <span className="text-rose"> · </span>
+              {fingerName(copy, editing.finger)}
+              {designAll && (
+                <span className="font-normal text-white/70">
+                  {" "}
+                  ({copy.design.allNails.toLocaleLowerCase(locale)})
+                </span>
+              )}
+            </p>
+            <div className="flex min-h-0 w-full flex-1 items-center justify-center gap-2">
+              <NailArrow
+                direction={-1}
+                label={copy.design.previousNail}
+                onClick={() => {
+                  stepNail(editing, -1);
+                }}
+              />
+              <NailEditor
+                design={design}
+                form={hand.form}
+                prefix={`nd-edit-${side}`}
+                defs={SHARED_DEFS}
+                className="aspect-[4/11] h-full max-w-[60%]"
+                selected={editing.selected}
+                onSelect={selectElement}
+                onChange={(id, patch) => {
+                  spread(
+                    { type: "update", target: editing, id, patch },
+                    editing,
+                  );
+                }}
+                onDelete={(id) => {
+                  spread({ type: "remove", target: editing, id }, editing);
+                  selectElement(undefined);
+                }}
+                elementLabel={elementLabel}
+                deleteLabel={copy.design.delete}
+                hint={copy.design.elementHint}
+              />
+              <NailArrow
+                direction={1}
+                label={copy.design.nextNail}
+                onClick={() => {
+                  stepNail(editing, 1);
+                }}
+              />
+            </div>
+          </div>
         )}
       </div>
     );
   };
 
-  // Phone: the hands cross-fade in one slot, or sit side by side when the
-  // menu is hidden. Desktop: the left hand's column grows from nothing.
+  // Phone: the hands cross-fade in one slot. With the menu hidden both
+  // show: stacked in portrait, so each hand spans the screen's width and
+  // the nails stay legible (the width fit crops the forearm, and a fade
+  // softens the cut), or side by side in landscape, where there is no
+  // height to stack in. Desktop: the left hand's column grows from nothing.
   const stage =
     isPhone ?
       <div className="flex h-full min-h-0 flex-col gap-1">
@@ -1065,7 +1153,9 @@ const Designer = ({
             label={copy.title}
           />
         </div>
-        <div className="flex min-h-0 flex-1 items-stretch gap-1">
+        <div
+          className={`flex min-h-0 flex-1 items-stretch gap-1 ${bothShown ? "portrait:flex-col portrait:gap-2" : ""}`}
+        >
           {STAGE_ORDER.map((side) => {
             const shown = bothShown || view.hand === side;
 
@@ -1076,7 +1166,11 @@ const Designer = ({
                   shown ? "grow opacity-100" : (
                     "w-0 grow-0 overflow-hidden opacity-0"
                   )
-                } ${bothShown ? "basis-0" : ""}`}
+                } ${
+                  bothShown ?
+                    "basis-0 portrait:[mask-image:linear-gradient(to_bottom,#000_calc(100%-2.5rem),transparent)]"
+                  : ""
+                }`}
               >
                 {handSlot(side, shown)}
               </div>

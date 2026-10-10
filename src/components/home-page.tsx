@@ -1,6 +1,8 @@
+import Link from "next/link";
 import Accordion from "@/components/accordion";
 import HeroScene from "@/components/hero-scene";
 import { BadgeRing, delay, NailGlyph } from "@/components/nail-art";
+import { FINISHES, FinishSwatch } from "@/components/nail-finishes";
 import {
   eyebrow,
   Footer,
@@ -8,6 +10,7 @@ import {
   InstagramIcon,
   roseButton,
   sectionTitle,
+  Sparkle,
 } from "@/components/site-chrome";
 import type { Dictionary, Locale, PerkKind } from "@/content/dictionary";
 import {
@@ -15,6 +18,7 @@ import {
   getDictionary,
   INSTAGRAM_HANDLE,
   INSTAGRAM_URL,
+  localePagePath,
   localeUrl,
   SITE_NAME,
   SITE_URL,
@@ -23,7 +27,10 @@ import {
 const MAP_SOURCE =
   "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d151614.12249171216!2d24.60637007581068!3d59.48269761665056!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x469294b4763fb4c7%3A0x500b36d18fc70f0!2sKesklinn%2C%20Tallinn!5e0!3m2!1sen!2see!4v1791322144284!5m2!1sen!2see";
 
-const Hero = ({ hero }: Readonly<{ hero: Dictionary["hero"] }>) => (
+const Hero = ({
+  hero,
+  locale,
+}: Readonly<{ hero: Dictionary["hero"]; locale: Locale }>) => (
   <section
     id="top"
     className="relative bg-burgundy bg-[radial-gradient(ellipse_at_70%_35%,var(--color-burgundy)_0%,var(--color-burgundy)_30%,var(--color-burgundy-deep)_100%)] pb-24 text-white md:pb-32"
@@ -77,6 +84,22 @@ const Hero = ({ hero }: Readonly<{ hero: Dictionary["hero"] }>) => (
             {hero.secondary}
           </a>
         </div>
+        <Link
+          href={localePagePath(locale, "designer")}
+          className="rise group mt-6 inline-flex items-center gap-2 text-sm font-semibold text-rose-soft transition-colors hover:text-rose"
+          style={delay(0.5)}
+        >
+          <Sparkle />
+          <span className="underline decoration-rose/50 underline-offset-4 group-hover:decoration-rose">
+            {hero.designer}
+          </span>
+          <span
+            aria-hidden="true"
+            className="transition-transform group-hover:translate-x-1"
+          >
+            →
+          </span>
+        </Link>
       </div>
     </div>
   </section>
@@ -126,31 +149,86 @@ const Marquee = ({ items }: Readonly<{ items: string[] }>) => {
   );
 };
 
-const Intro = ({ intro }: Readonly<{ intro: Dictionary["intro"] }>) => (
-  <section className="mx-auto max-w-6xl px-4 pt-20 pb-16 sm:px-8 md:grid md:grid-cols-[1fr_1.2fr] md:gap-14 md:pt-28 md:pb-24">
-    <div className="reveal">
-      <p className={`${eyebrow} text-rose`}>{intro.eyebrow}</p>
-      <h2 className={`mt-4 ${sectionTitle} text-ink`}>{intro.title}</h2>
-    </div>
-    <div className="reveal mt-6 md:mt-0 md:self-end">
-      <p className="text-lg leading-relaxed text-plum">{intro.text}</p>
-      <ul className="mt-6 flex flex-wrap gap-2">
-        {intro.highlights.map((highlight) => (
-          <li
-            key={highlight}
-            className="flex items-center gap-2 rounded-full border border-rose/50 px-4 py-2 text-sm text-ink"
-          >
-            <span
-              aria-hidden="true"
-              className="size-1.5 rounded-full bg-rose"
-            />
-            {highlight}
-          </li>
-        ))}
-      </ul>
-    </div>
-  </section>
-);
+// The invitation to the nail designer: what it does in four steps, a row of
+// sample finishes and the way in. The swatches borrow the hero's shared
+// polish definitions, which the hero drawing puts in the document.
+const Promo = ({
+  promo,
+  locale,
+}: Readonly<{ promo: Dictionary["promo"]; locale: Locale }>) => {
+  const samples = promo.samples.flatMap((name) => {
+    const finish = FINISHES.find((candidate) => candidate.name === name);
+
+    return finish ? [finish] : [];
+  });
+
+  return (
+    <section
+      id="kujundaja"
+      className="scroll-mt-16 bg-burgundy-deep py-20 text-white md:py-28"
+    >
+      <div className="mx-auto max-w-6xl px-4 sm:px-8 lg:grid lg:grid-cols-[1.15fr_1fr] lg:items-center lg:gap-16">
+        <div className="reveal">
+          <p className={`${eyebrow} text-rose`}>{promo.eyebrow}</p>
+          <h2 className={`mt-4 ${sectionTitle}`}>
+            {promo.titleStart}{" "}
+            <em className="font-normal text-rose">{promo.titleAccent}</em>
+          </h2>
+          <p className="mt-4 max-w-lg text-lg leading-relaxed text-white/80">
+            {promo.text}
+          </p>
+          <ol className="mt-10 grid gap-x-8 gap-y-6 sm:grid-cols-2">
+            {promo.steps.map((step, index) => (
+              <li key={step.title} className="flex gap-4">
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-full border border-rose pt-px font-serif text-[1.75rem] leading-none font-medium text-rose lining-nums">
+                  {index + 1}
+                </span>
+                <div>
+                  <h3 className="font-serif text-2xl text-white">
+                    {step.title}
+                  </h3>
+                  <p className="mt-1 leading-relaxed text-white/70">
+                    {step.text}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+            <Link
+              href={localePagePath(locale, "designer")}
+              className={`${roseButton} beckon w-full gap-2 sm:w-auto`}
+            >
+              <Sparkle className="text-burgundy-deep" />
+              {promo.cta}
+            </Link>
+            <p className="text-sm text-white/60">{promo.note}</p>
+          </div>
+        </div>
+        <Link
+          href={localePagePath(locale, "designer")}
+          aria-label={promo.cta}
+          className="reveal group mt-14 block rounded-[2rem] rounded-tl-[5rem] rounded-br-[5rem] bg-burgundy p-8 text-rose transition-transform duration-300 hover:-translate-y-1.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rose sm:p-12 lg:mt-0"
+        >
+          <ul className="flex items-end justify-center gap-2 sm:gap-4">
+            {samples.map((finish, index) => (
+              <li
+                key={finish.name}
+                className="w-[16%] transition-transform duration-300 group-hover:-translate-y-2"
+                style={{
+                  transitionDelay: `${String(index * 40)}ms`,
+                  marginBottom: `${String(Math.abs(index - 2) * 10)}%`,
+                }}
+              >
+                <FinishSwatch finish={finish} className="w-full" />
+              </li>
+            ))}
+          </ul>
+        </Link>
+      </div>
+    </section>
+  );
+};
 
 // Logo tiles. Netflix's N (from Simple Icons) keeps its brand red on black,
 // as Netflix's guidelines ask; the parking tile is the familiar blue P sign.
@@ -219,7 +297,7 @@ const PerkLogo = ({ kind }: Readonly<{ kind: PerkKind }>) => {
 };
 
 const Time = ({ time }: Readonly<{ time: Dictionary["time"] }>) => (
-  <section id="sinu-aeg" className="scroll-mt-16 pb-20 md:pb-28">
+  <section id="sinu-aeg" className="scroll-mt-16 pt-20 pb-20 md:pt-28 md:pb-28">
     <div className="mx-auto max-w-6xl px-4 sm:px-8">
       <div className="reveal max-w-xl">
         <p className={`${eyebrow} text-rose`}>{time.eyebrow}</p>
@@ -434,10 +512,10 @@ const HomePage = ({ locale }: Readonly<{ locale: Locale }>) => {
       <LocalBusinessSchema locale={locale} meta={dictionary.meta} />
       <Header locale={locale} page="home" nav={dictionary.nav} />
       <main className="flex-1">
-        <Hero hero={dictionary.hero} />
+        <Hero hero={dictionary.hero} locale={locale} />
         <Marquee items={dictionary.marquee} />
-        <Intro intro={dictionary.intro} />
         <Time time={dictionary.time} />
+        <Promo promo={dictionary.promo} locale={locale} />
         <Instagram instagram={dictionary.instagram} />
         <Faq faq={dictionary.faq} />
         <Visit visit={dictionary.visit} />

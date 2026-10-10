@@ -221,8 +221,17 @@ const useZoom = (
             height: mix(from.height, to.height),
           }),
         );
-        if (u < 1) handle.frame = requestAnimationFrame(step);
-        else handle.settled = true;
+        if (u < 1) {
+          handle.frame = requestAnimationFrame(step);
+          return;
+        }
+        // The slot may have changed shape during the glide (the hands
+        // restacking as the menu hides), so the end is a fresh fit.
+        svg.setAttribute(
+          "viewBox",
+          viewBoxString(fitBox(svg, box, focused, fit)),
+        );
+        handle.settled = true;
       };
 
       handle.frame = requestAnimationFrame(step);

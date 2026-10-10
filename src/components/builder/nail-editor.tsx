@@ -30,6 +30,9 @@ interface NailViewProperties {
   // out, the SVG carries its own (for the export).
   defs?: string;
   className?: string;
+  // Outline the nail in plum instead of pearl, so a pale pattern reads
+  // against a pale background (the catalogue tiles).
+  outlined?: boolean;
   svgRef?: React.Ref<SVGSVGElement>;
   children?: React.ReactNode;
 }
@@ -42,6 +45,7 @@ const NailView = ({
   prefix,
   defs,
   className,
+  outlined = false,
   svgRef,
   children,
 }: Readonly<NailViewProperties>) => {
@@ -84,7 +88,9 @@ const NailView = ({
           />
         ))}
       </g>
-      <path d={outline} strokeWidth="1" strokeOpacity="0.8" />
+      {outlined ?
+        <path d={outline} stroke="#80525b" strokeWidth="1.5" />
+      : <path d={outline} strokeWidth="1" strokeOpacity="0.8" />}
       <path
         d={`M-11 ${String(tip + 56)}C-11 ${String(tip + 38)}-6 ${String(tip + 26)} 0 ${String(tip + 18)}`}
         strokeWidth="1.6"

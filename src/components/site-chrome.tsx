@@ -59,12 +59,12 @@ const anchor = (home: string, id: string) => `${home}#${id}`;
 const designerLink = (current: boolean) =>
   `inline-flex items-center gap-1.5 rounded-full border border-rose px-4 py-1.5 text-sm font-semibold text-rose-soft transition-colors hover:bg-rose hover:text-burgundy-deep ${current ? "bg-rose/25" : "beckon bg-rose/10"}`;
 
-const Sparkle = () => (
+const Sparkle = ({ className }: Readonly<{ className?: string }>) => (
   <svg
     viewBox="0 0 24 24"
     fill="currentColor"
     aria-hidden="true"
-    className="size-3.5 text-rose"
+    className={`size-3.5 ${className ?? "text-rose"}`}
   >
     <path d="M12 2c.6 5.4 4.6 9.4 10 10-5.4.6-9.4 4.6-10 10-.6-5.4-4.6-9.4-10-10 5.4-.6 9.4-4.6 10-10Z" />
   </svg>
@@ -249,5 +249,6 @@ export {
   roseButton,
   roseButtonBase,
   sectionTitle,
+  Sparkle,
   Wordmark,
 };

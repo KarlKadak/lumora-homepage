@@ -100,7 +100,9 @@ interface DesignerCopy {
     done: string;
     empty: string;
     pick: string;
-    fingerStrip: string;
+    // Arrows beside the nail editor that step through the hand's nails.
+    previousNail: string;
+    nextNail: string;
     elementLabel: string;
     elementHint: string;
   };
@@ -150,10 +152,23 @@ interface Dictionary {
     lead: string;
     primary: string;
     secondary: string;
+    designer: string;
     picker: Picker;
   };
   marquee: string[];
-  intro: { eyebrow: string; title: string; text: string; highlights: string[] };
+  // The home page's invitation to the nail designer.
+  promo: {
+    eyebrow: string;
+    titleStart: string;
+    titleAccent: string;
+    text: string;
+    steps: { title: string; text: string }[];
+    cta: string;
+    note: string;
+    // Finish names from the catalogue in nail-finishes.tsx, shown as a row of
+    // sample nails.
+    samples: string[];
+  };
   time: { eyebrow: string; title: string; text: string; items: Perk[] };
   instagram: {
     eyebrow: string;
@@ -210,6 +225,7 @@ const et: Dictionary = {
     lead: "Maniküür, geellakk, küünepikendused ja küünekunst. Avamise kuupäeva anname teada Instagramis.",
     primary: "Võta ühendust",
     secondary: "Jälgi Instagramis",
+    designer: "Kujunda oma küüned",
     picker: {
       hint: "Klõpsa pudelil ja vali värv",
       title: "Vali värv",
@@ -259,16 +275,34 @@ const et: Dictionary = {
     "Küünepikendus",
     "BIAB tugevdus",
     "Küünekunst",
+    "Kujunda ise",
   ],
-  intro: {
-    eyebrow: "Meist",
-    title: "Väike salong suure tähelepanuga detailidele.",
-    text: "Töötame steriliseeritud instrumentidega, kasutame vegan- ja HEMA-vabu tooteid ning võtame iga kliendi jaoks aega. Olgu soov klassikaline nude, peen kroom või käsitsi maalitud muster, teeme selle nii, et oled tulemusega rahul.",
-    highlights: [
-      "Steriilsed instrumendid",
-      "HEMA-vabad tooted",
-      "Ainult broneeringuga",
+  promo: {
+    eyebrow: "Küünekujundaja",
+    titleStart: "Kujunda oma küüned",
+    titleAccent: "juba enne külastust.",
+    text: "Meie kujundajas paned paari minutiga kokku täpselt sellise komplekti, nagu soovid. Nii tead sa ise, mida tahad, ja meie teame, mida teha.",
+    steps: [
+      {
+        title: "Pikkus ja kuju",
+        text: "Vali, kui pikad ja millise kujuga küüned sulle sobivad.",
+      },
+      {
+        title: "Värv ja viimistlus",
+        text: "Kümned toonid, kroom, ombré ja prantsuse maniküür.",
+      },
+      {
+        title: "Mustrid ja kivid",
+        text: "Lisa mustreid, illustratsioone ja kivikesi igale küünele eraldi.",
+      },
+      {
+        title: "Laadi alla ja jaga",
+        text: "Salvesta pilt või jaga lingiga ning võta see salongi kaasa.",
+      },
     ],
+    cta: "Ava kujundaja",
+    note: "Tasuta, ilma kontota ja töötab ka telefonis.",
+    samples: ["french", "chrome", "cherry", "galaxy", "marble"],
   },
   time: {
     eyebrow: "Sinu aeg",
@@ -322,6 +356,11 @@ const et: Dictionary = {
         question: "Milliseid tooteid kasutate?",
         answer:
           "Vegan- ja HEMA-vabu tooteid ning töötame alati steriliseeritud instrumentidega.",
+      },
+      {
+        question: "Kas saan oma kujunduse ette valmis mõelda?",
+        answer:
+          "Jah. Meie küünekujundajas valid pikkuse, kuju, värvi ja kaunistused, laadid pildi alla ja võtad selle külastusele kaasa.",
       },
     ],
   },
@@ -453,7 +492,8 @@ const et: Dictionary = {
       done: "Valmis",
       empty: "Sellel küünel pole veel elemente. Lisa muster, pilt või kivi.",
       pick: "Vali element küünelt või loendist, et selle omadusi muuta.",
-      fingerStrip: "Vali küüs",
+      previousNail: "Eelmine küüs",
+      nextNail: "Järgmine küüs",
       elementLabel: "{name}, {color}, {y} % tipust",
       elementHint:
         "Nooleklahvid liigutavad, [ ja ] pööravad, + ja − muudavad suurust, Delete kustutab.",
@@ -551,6 +591,7 @@ const en: Dictionary = {
     lead: "Manicures, gel polish, extensions and nail art. We will announce the opening date on Instagram.",
     primary: "Get in touch",
     secondary: "Follow on Instagram",
+    designer: "Design your nails",
     picker: {
       hint: "Click the bottle to pick a colour",
       title: "Pick a colour",
@@ -594,16 +635,40 @@ const en: Dictionary = {
       },
     },
   },
-  marquee: ["Manicure", "Gel polish", "Extensions", "BIAB overlay", "Nail art"],
-  intro: {
-    eyebrow: "About us",
-    title: "A small salon with a big eye for detail.",
-    text: "We work with sterilised tools, use vegan and HEMA-free products and never rush an appointment. Whether you want a classic nude, a subtle chrome or a hand-painted design, we make sure you are happy with the result.",
-    highlights: [
-      "Sterilised tools",
-      "HEMA-free products",
-      "By appointment only",
+  marquee: [
+    "Manicure",
+    "Gel polish",
+    "Extensions",
+    "BIAB overlay",
+    "Nail art",
+    "Design your own",
+  ],
+  promo: {
+    eyebrow: "Nail designer",
+    titleStart: "Design your nails",
+    titleAccent: "before you visit.",
+    text: "Our designer lets you put together exactly the set you want in a couple of minutes. You know what you are after, and we know what to do.",
+    steps: [
+      {
+        title: "Length and shape",
+        text: "Choose how long and what shape suits you best.",
+      },
+      {
+        title: "Colour and finish",
+        text: "Dozens of shades, chrome, ombré and French tips.",
+      },
+      {
+        title: "Patterns and stones",
+        text: "Add patterns, illustrations and stones to each nail on its own.",
+      },
+      {
+        title: "Download and share",
+        text: "Save a picture or share a link, and bring it to the salon.",
+      },
     ],
+    cta: "Open the designer",
+    note: "Free, no account needed, and it works on your phone.",
+    samples: ["french", "chrome", "cherry", "galaxy", "marble"],
   },
   time: {
     eyebrow: "Your time",
@@ -657,6 +722,11 @@ const en: Dictionary = {
         question: "Which products do you use?",
         answer:
           "Vegan and HEMA-free products, and we always work with sterilised tools.",
+      },
+      {
+        question: "Can I plan my design in advance?",
+        answer:
+          "Yes. In our nail designer you pick the length, shape, colour and decoration, download the picture and bring it to your appointment.",
       },
     ],
   },
@@ -789,7 +859,8 @@ const en: Dictionary = {
       empty:
         "No elements on this nail yet. Add a pattern, an illustration or a stone.",
       pick: "Choose an element on the nail or in the list to change its properties.",
-      fingerStrip: "Choose a nail",
+      previousNail: "Previous nail",
+      nextNail: "Next nail",
       elementLabel: "{name}, {color}, {y} % from the top",
       elementHint:
         "Arrow keys move, [ and ] rotate, + and − resize, Delete removes.",

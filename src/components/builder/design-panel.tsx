@@ -27,7 +27,7 @@ import type {
   Side,
   Target,
 } from "@/components/builder/state";
-import { FINGERS, handOf } from "@/components/builder/state";
+import { handOf } from "@/components/builder/state";
 import type { NailForm } from "@/components/nail-form";
 import type { DesignerCopy, FingerName } from "@/content/dictionary";
 
@@ -47,11 +47,6 @@ const fingerName = (copy: DesignerCopy, finger: Finger) =>
   copy.fingers[FINGER_NAMES[finger] ?? "index"];
 
 const sideName = (copy: DesignerCopy, side: Side) => copy.hands[side];
-
-// The left hand's fingers run from its little finger inwards, as the hand
-// lies on the stage.
-const fingersOf = (side: Side): readonly Finger[] =>
-  side === "left" ? FINGERS.toReversed() : FINGERS;
 
 // The element tiles, drawn once per form: they do not change while a
 // design is being edited.
@@ -110,6 +105,7 @@ const Catalogue = memo(
               form={form}
               prefix={`${prefix}-tile-${item.variant}`}
               defs={defs}
+              outlined={item.kind === "pattern"}
               className="h-12"
             />
             <span className="text-center text-[0.58rem] leading-tight font-semibold">
@@ -177,6 +173,25 @@ const chip =
 
 const chipPressed = "bg-rose text-burgundy-deep hover:bg-rose";
 
+// The shuffle beside a section label. In the phone's popups, whose header
+// names the section, it shrinks to the icon alone.
+const ShuffleChip = ({
+  label,
+  iconOnly,
+  onClick,
+}: Readonly<{ label: string; iconOnly: boolean; onClick: () => void }>) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label={iconOnly ? label : undefined}
+    title={iconOnly ? label : undefined}
+    className={iconOnly ? iconChip : chip}
+  >
+    {ICONS.shuffle}
+    {!iconOnly && <span className="ml-1.5">{label}</span>}
+  </button>
+);
+
 const iconChip =
   "flex size-11 cursor-pointer items-center justify-center rounded-full border border-rose/60 text-burgundy transition-[background-color,transform] duration-200 hover:bg-rose/20 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rose [&>svg]:size-5";
 
@@ -184,7 +199,7 @@ const sectionLabel =
   "text-xs font-semibold tracking-widest text-plum uppercase";
 
 // One block of the panel on its own, for the phone's popups.
-type DesignPart = "nails" | "color" | "add" | "layers";
+type DesignPart = "color" | "add" | "layers";
 
 interface DesignPanelProperties {
   part?: DesignPart;
@@ -195,7 +210,6 @@ interface DesignPanelProperties {
   prefix: string;
   // The shared gradient defs' id prefix.
   defs: string;
-  onTarget: (target: Target) => void;
   onSelect: (id: string | undefined) => void;
   onAdd: (definition: ElementDefinition) => void;
   onPatch: (id: string, patch: Partial<Omit<NailElement, "id">>) => void;
@@ -223,7 +237,6 @@ const DesignPanel = ({
   copy,
   prefix,
   defs,
-  onTarget,
   onSelect,
   onAdd,
   onPatch,
@@ -262,102 +275,52 @@ const DesignPanel = ({
   ];
 
   const shows = (block: DesignPart) => part === undefined || part === block;
+  // The phone's popups name the section in their header.
+  const inPopup = part !== undefined;
+  const randomPaint = () => {
+    onRandomPaint(paintAll);
+  };
 
   if (!design) return undefined;
 
   return (
     <div className="space-y-5">
-      {shows("nails") && (
-        <details
-          className="group rounded-2xl bg-white/60 px-3 py-2"
-          open={part !== undefined}
-        >
-          <summary className="cursor-pointer list-none text-sm font-semibold text-burgundy">
-            <span className="mr-2 inline-block transition-transform group-open:rotate-90">
-              ›
-            </span>
-            {copy.design.fingerStrip}
-            <span className="ml-2 font-normal text-plum">
-              {designAll ?
-                copy.design.allNails
-              : `${sideName(copy, target.side)} · ${fingerName(copy, target.finger)}`
-              }
-            </span>
-          </summary>
-          {/* Only the edited hand's nails; the hand is chosen on the stage. */}
-          <div className="mt-2 flex gap-3 overflow-x-auto pb-1">
-            {[target.side].map((side) => (
-              <div key={side} className="flex shrink-0 flex-col gap-1">
-                <div className="flex gap-0.5">
-                  {fingersOf(side).map((finger) => {
-                    // No nail is singled out while edits go to all of them.
-                    const active =
-                      !designAll &&
-                      side === target.side &&
-                      finger === target.finger;
-                    const stripHand = handOf(state, side);
-                    const stripDesign = stripHand.nails[finger];
-
-                    return (
-                      stripDesign && (
-                        <button
-                          key={finger}
-                          type="button"
-                          aria-label={`${sideName(copy, side)}, ${fingerName(copy, finger)}`}
-                          aria-pressed={active}
-                          onClick={() => {
-                            onTarget({ side, finger });
-                          }}
-                          className={`flex h-11 w-7 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rose ${active ? "bg-white ring-2 ring-rose ring-inset" : ""}`}
-                        >
-                          <NailView
-                            design={stripDesign}
-                            form={stripHand.form}
-                            prefix={`${prefix}-strip-${side}-${String(finger)}`}
-                            defs={defs}
-                            className="h-9 text-burgundy"
-                          />
-                        </button>
-                      )
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </details>
+      {shows("color") && (
+        <div className="flex items-center justify-between gap-2">
+          <Toggle
+            value={paintAll}
+            copy={copy}
+            onChange={(all) => {
+              onPaintAll(all);
+              if (all)
+                onPaint(design.paint, paintName(copy, design.paint), true);
+            }}
+          />
+          {inPopup && (
+            <ShuffleChip
+              label={copy.toolbar.random}
+              iconOnly
+              onClick={randomPaint}
+            />
+          )}
+        </div>
       )}
 
       {shows("color") && (
-        <details className="group rounded-2xl bg-white/60 px-3 py-2" open>
-          <summary className="cursor-pointer list-none text-sm font-semibold text-burgundy">
-            <span className="mr-2 inline-block transition-transform group-open:rotate-90">
-              ›
-            </span>
-            {copy.panels.color}
-          </summary>
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <Toggle
-              value={paintAll}
-              copy={copy}
-              onChange={(all) => {
-                onPaintAll(all);
-                if (all)
-                  onPaint(design.paint, paintName(copy, design.paint), true);
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                onRandomPaint(paintAll);
-              }}
-              className={chip}
-            >
-              {ICONS.shuffle}
-              <span className="ml-1.5">{copy.toolbar.random}</span>
-            </button>
-          </div>
-          <div className="pt-2">
+        <div>
+          {/* The phone's popup carries the title itself, and its shuffle
+              sits beside the toggle above. */}
+          {!inPopup && (
+            <div className="flex items-center justify-between gap-2">
+              <p className={sectionLabel}>{copy.panels.color}</p>
+              <ShuffleChip
+                label={copy.toolbar.random}
+                iconOnly={false}
+                onClick={randomPaint}
+              />
+            </div>
+          )}
+          <div className={inPopup ? undefined : "mt-2"}>
             <ColorPanel
               value={design.paint}
               copy={copy}
@@ -367,25 +330,35 @@ const DesignPanel = ({
               }}
             />
           </div>
-        </details>
+        </div>
       )}
 
       {shows("add") && (
         <div className="flex items-center justify-between gap-2">
           <Toggle value={designAll} copy={copy} onChange={onDesignAll} />
+          {inPopup && (
+            <ShuffleChip
+              label={copy.toolbar.random}
+              iconOnly
+              onClick={onRandom}
+            />
+          )}
         </div>
       )}
 
       {shows("add") && (
         <div>
-          <div className="flex items-center justify-between gap-2">
-            <p className={sectionLabel}>{copy.design.addElement}</p>
-            <button type="button" onClick={onRandom} className={chip}>
-              {ICONS.shuffle}
-              <span className="ml-1.5">{copy.toolbar.random}</span>
-            </button>
-          </div>
-          <div role="tablist" className="mt-2 flex gap-1">
+          {!inPopup && (
+            <div className="flex items-center justify-between gap-2">
+              <p className={sectionLabel}>{copy.design.addElement}</p>
+              <ShuffleChip
+                label={copy.toolbar.random}
+                iconOnly={false}
+                onClick={onRandom}
+              />
+            </div>
+          )}
+          <div role="tablist" className={`flex gap-1 ${inPopup ? "" : "mt-2"}`}>
             {tabs.map(({ kind, label }) => (
               <button
                 key={kind}

@@ -13,7 +13,7 @@
   --font-serif: var(--font-cormorant), "Times New Roman", serif;
   --font-sans: var(--font-manrope), system-ui, sans-serif;
 
-  --animate-marquee: marquee 216s linear infinite;
+  --animate-marquee: marquee 259s linear infinite;
   --animate-spin-slow: spin 22s linear infinite;
 
   @keyframes marquee {
