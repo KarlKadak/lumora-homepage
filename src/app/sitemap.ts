@@ -8,7 +8,7 @@ import {
 
 const PAGES: readonly Page[] = ["home", "designer"];
 
-// Estonian is the default for visitors whose language we do not serve, as in
+// Estonian is the default for visitors whose language the site does not serve, as in
 // the pages' own hreflang links.
 const DEFAULT_LOCALE: Locale = "et";
 

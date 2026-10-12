@@ -51,7 +51,11 @@ const Hero = ({
       </div>
 
       <div className="relative mx-auto w-[min(84vw,24rem)] md:row-span-2 md:w-full md:max-w-lg md:self-center">
-        <HeroScene className="w-full text-rose" picker={hero.picker} />
+        <HeroScene
+          className="w-full text-rose"
+          picker={hero.picker}
+          designerHref={localePagePath(locale, "designer")}
+        />
         <Link
           href={localePagePath(locale, "designer")}
           aria-label={hero.designer}

@@ -51,6 +51,7 @@ import type {
   NailDesign,
   NailElement,
   Paint,
+  Scope,
   Side,
   Target,
 } from "@/components/builder/state";
@@ -77,7 +78,7 @@ import {
 import { FinishGradients } from "@/components/nail-finishes";
 import { type Level, presetOf, tipY } from "@/components/nail-form";
 import type { DesignerCopy, Locale } from "@/content/dictionary";
-import { fill } from "@/content/dictionary";
+import { fill, localePagePath } from "@/content/dictionary";
 
 // The designer's client root: the undoable design state, the view state
 // (which hand, which panel, design mode), the two layouts and everything
@@ -137,6 +138,28 @@ const reducedMotion = () =>
 const ZOOM_DURATION = 450;
 
 const DRAFT_DEBOUNCE = 300;
+
+// After this long on the page the visitor is nudged towards booking, once
+// per tab: the marker in session storage survives a reload and the locale
+// switch, so the prompt does not come back on every visit to the page.
+const PROMPT_DELAY = 20_000;
+const PROMPT_KEY = "lumora-designer-prompt";
+
+const promptShown = () => {
+  try {
+    return sessionStorage.getItem(PROMPT_KEY) !== null;
+  } catch {
+    return true;
+  }
+};
+
+const markPromptShown = () => {
+  try {
+    sessionStorage.setItem(PROMPT_KEY, "1");
+  } catch {
+    // Storage blocked: the prompt shows again next time, which is harmless.
+  }
+};
 
 // One copy of the finish and stone gradients for every swatch and mini nail
 // on the page; the hands and the export tiles carry their own.
@@ -236,15 +259,19 @@ const ShuffleButton = ({
   </button>
 );
 
-// Whether the ten nails differ under `key`: by whole design, or by polish
-// alone. The left hand is compared as seen in a mirror, since copies onto it
-// are mirrored.
-const nailsVary = (state: DesignerState, key: (nail: NailDesign) => string) => {
+// Whether the nails differ under `key`: by whole design, or by polish
+// alone. All ten, or the five of one hand. The left hand is compared as seen
+// in a mirror, since copies onto it are mirrored.
+const nailsVary = (
+  state: DesignerState,
+  key: (nail: NailDesign) => string,
+  sides: readonly Side[] = SIDES,
+) => {
   const left = state.left === undefined ? undefined : mirroredHand(state.left);
 
   return (
     new Set(
-      SIDES.flatMap((side) =>
+      sides.flatMap((side) =>
         (side === "left" ? (left ?? state.right) : state.right).nails.map(
           (nail) => key(nail),
         ),
@@ -252,6 +279,43 @@ const nailsVary = (state: DesignerState, key: (nail: NailDesign) => string) => {
     ).size > 1
   );
 };
+
+// The widest scope under which the first edit overwrites nothing that
+// already differs: the ten nails when they are all alike, the hand when
+// only the hands differ, the nail alone otherwise.
+const safeScope = (
+  state: DesignerState,
+  key: (nail: NailDesign) => string,
+  side: Side,
+): Scope =>
+  nailsVary(state, key, [side]) ? "nail"
+  : nailsVary(state, key) ? "hand"
+  : "all";
+
+// The other nails an edit reaches under `scope`.
+const reachOf = (from: Target, scope: Scope): Target[] =>
+  (scope === "all" ? SIDES : [from.side]).flatMap((side) =>
+    FINGERS.filter(
+      (finger) => side !== from.side || finger !== from.finger,
+    ).map((finger) => ({ side, finger })),
+  );
+
+// Copies the nail onto the others in reach; copies to the other hand are
+// mirrored.
+const copyAcross = (from: Target, scope: Scope): Action => ({
+  type: "copy",
+  from,
+  to: reachOf(from, scope).map((target) => ({ target })),
+  seed: makeId(),
+  mirror: true,
+});
+
+const SCOPE_RANK: Record<Scope, number> = { all: 0, hand: 1, nail: 2 };
+
+// The narrower of two scopes: a toggle the visitor already narrowed is not
+// widened again when design mode reopens.
+const narrower = (a: Scope, b: Scope): Scope =>
+  SCOPE_RANK[a] >= SCOPE_RANK[b] ? a : b;
 
 const segment =
   "inline-flex min-h-10 cursor-pointer items-center justify-center rounded-full px-4 text-xs font-semibold transition-[background-color,color] duration-300 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rose disabled:cursor-default disabled:opacity-40";
@@ -287,16 +351,17 @@ const Designer = ({
   const [toast, setToast] = useState<string | undefined>(undefined);
   const [linkCopied, setLinkCopied] = useState(false);
   const [shareable] = useState(canShareFiles);
-  // Edits to the edited nail go to every nail while this is on.
-  // "All nails" is the default; picking a single nail overrides it.
-  const [designAll, setDesignAll] = useState(true);
-  const [paintAll, setPaintAll] = useState(true);
+  // How far edits to the edited nail reach: every nail, its hand or itself.
+  // "All nails" is the default; picking a single nail narrows it.
+  const [designScope, setDesignScope] = useState<Scope>("all");
+  const [paintScope, setPaintScope] = useState<Scope>("all");
   const isPhone = useSyncExternalStore(
     subscribePhone,
     readPhone,
     readPhoneOnServer,
   );
   const dialogReference = useRef<HTMLDialogElement>(null);
+  const promptReference = useRef<HTMLDialogElement>(null);
   const panelReference = useRef<HTMLDivElement>(null);
   const slots = useRef<ExportSlots>({
     left: undefined,
@@ -308,13 +373,14 @@ const Designer = ({
   const latest = useRef<{
     state: DesignerState;
     view: ViewState;
-    designAll: boolean;
-  }>({ state: history.present, view, designAll: true });
+    designScope: Scope;
+  }>({ state: history.present, view, designScope: "all" });
   const titleId = useId();
+  const promptTitleId = useId();
   const state = history.present;
   const designing = view.designing;
 
-  latest.current = { state, view, designAll };
+  latest.current = { state, view, designScope };
 
   const announce = useCallback((message: string) => {
     setAnnouncement("");
@@ -436,22 +502,51 @@ const Designer = ({
     };
   }, [toast]);
 
+  // The booking prompt. If the reset confirmation is up when the time comes,
+  // the prompt waits for it to close rather than stacking on top.
+  useEffect(() => {
+    if (promptShown()) return;
+    const confirmation = dialogReference.current;
+    const show = () => {
+      markPromptShown();
+      promptReference.current?.showModal();
+    };
+    const timer = setTimeout(() => {
+      if (confirmation?.open) {
+        confirmation.addEventListener("close", show, { once: true });
+      } else {
+        show();
+      }
+    }, PROMPT_DELAY);
+
+    return () => {
+      clearTimeout(timer);
+      confirmation?.removeEventListener("close", show);
+    };
+  }, []);
+
   // `single` narrows the edits to that nail: picking from the strip, or a
   // nail on the hand while already designing; entering design mode from
   // the stage or the tab keeps the default of all nails. Nails that already
   // differ (after a random set, say) are edited one at a time either way, so
   // the first edit does not quietly overwrite the others; likewise the polish
-  // when it varies.
+  // when it varies. When only the hands differ, the hand is the scope.
   const openDesign = useCallback((target: Target, single = false) => {
     if (single) {
-      setDesignAll(false);
-      setPaintAll(false);
+      setDesignScope("nail");
+      setPaintScope("nail");
     } else {
       const { state: current } = latest.current;
 
-      if (nailsVary(current, designKey)) setDesignAll(false);
-      if (nailsVary(current, (nail) => paintKey(nail.paint)))
-        setPaintAll(false);
+      setDesignScope((scope) =>
+        narrower(scope, safeScope(current, designKey, target.side)),
+      );
+      setPaintScope((scope) =>
+        narrower(
+          scope,
+          safeScope(current, (nail) => paintKey(nail.paint), target.side),
+        ),
+      );
     }
     setView((current) => ({
       ...current,
@@ -471,7 +566,7 @@ const Designer = ({
   // The arrows beside the editor step through all ten nails in the order
   // they lie on the stage: the left hand from its little finger inwards, then
   // the right hand from its thumb outwards. Past either end they wrap to the
-  // other hand's little finger. The all-nails toggles stay as they were,
+  // other hand's little finger. The scope toggles stay as they were,
   // unless the nails differ.
   const stepNail = useCallback(
     (target: Target, by: 1 | -1) => {
@@ -558,21 +653,21 @@ const Designer = ({
     announce(fill(copy.live[field], { value, name }));
   };
 
-  // Paints the edited nail, or every nail of both hands.
-  const applyPaint = (paint: Paint, name: string, all: boolean) => {
+  // Paints the edited nail, its hand, or every nail of both hands.
+  const applyPaint = (paint: Paint, name: string, scope: Scope) => {
     const target = designing ?? { side: view.hand, finger: 1 };
 
-    if (all) {
-      for (const side of SIDES) {
-        dispatch({ type: "paint", side, fingers: FINGERS, paint });
-      }
-    } else {
+    if (scope === "nail") {
       dispatch({
         type: "paint",
         side: target.side,
         fingers: [target.finger],
         paint,
       });
+    } else {
+      for (const side of scope === "all" ? SIDES : [target.side]) {
+        dispatch({ type: "paint", side, fingers: FINGERS, paint });
+      }
     }
     announce(fill(copy.color.applied, { name }));
   };
@@ -587,27 +682,18 @@ const Designer = ({
         handOf(latest.current.state, target.side).form.length,
       );
 
+      const scope = latest.current.designScope;
+
       dispatch(
-        latest.current.designAll ?
-          {
+        scope === "nail" ?
+          { type: "add", target, element }
+        : {
             type: "batch",
             actions: [
               { type: "add", target, element },
-              {
-                type: "copy",
-                from: target,
-                to: SIDES.flatMap((side) =>
-                  FINGERS.filter(
-                    (finger) =>
-                      side !== target.side || finger !== target.finger,
-                  ).map((finger) => ({ target: { side, finger } })),
-                ),
-                seed: makeId(),
-                mirror: true,
-              },
+              copyAcross(target, scope),
             ],
-          }
-        : { type: "add", target, element },
+          },
       );
       selectElement(element.id);
     },
@@ -618,14 +704,14 @@ const Designer = ({
     changeForm(field, randomLevel(Math.random));
   };
 
-  const randomiseColor = (all: boolean) => {
+  const randomiseColor = (scope: Scope) => {
     const paint = randomPaint(Math.random);
     const key =
       paint.kind === "solid" ?
         (POLISHES.find((polish) => polish.hex === paint.hex)?.id ?? paint.hex)
       : paint.id;
 
-    applyPaint(paint, copy.color.names[key] ?? key, all);
+    applyPaint(paint, copy.color.names[key] ?? key, scope);
   };
 
   const randomiseNail = () => {
@@ -668,29 +754,18 @@ const Designer = ({
     announce(copy.toolbar.randomAll);
   };
 
-  // While "all nails" is on, every edit to the edited nail is followed by
-  // a copy of that nail onto all the others, in one undo step.
-  const copyToAll = (from: Target): Action => ({
-    type: "copy",
-    from,
-    to: SIDES.flatMap((side) =>
-      FINGERS.filter(
-        (finger) => side !== from.side || finger !== from.finger,
-      ).map((finger) => ({ target: { side, finger } })),
-    ),
-    seed: makeId(),
-    mirror: true,
-  });
+  // Beyond the nail alone, every edit to the edited nail is followed by a
+  // copy of that nail onto the others in reach, in one undo step.
   const spread = (action: Action, target: Target) => {
     dispatch(
-      designAll ?
-        { type: "batch", actions: [action, copyToAll(target)] }
-      : action,
+      designScope === "nail" ? action : (
+        { type: "batch", actions: [action, copyAcross(target, designScope)] }
+      ),
     );
   };
-  const setDesignAllNails = (all: boolean) => {
-    setDesignAll(all);
-    if (all && designing) dispatch(copyToAll(designing));
+  const setDesignReach = (scope: Scope) => {
+    setDesignScope(scope);
+    if (scope !== "nail" && designing) dispatch(copyAcross(designing, scope));
   };
 
   const elementLabel = (element: NailElement) => {
@@ -1027,10 +1102,10 @@ const Designer = ({
       onReorder={(id, by) => {
         spread({ type: "reorder", target: designTarget, id, by }, designTarget);
       }}
-      designAll={designAll}
-      onDesignAll={setDesignAllNails}
-      paintAll={paintAll}
-      onPaintAll={setPaintAll}
+      designScope={designScope}
+      onDesignScope={setDesignReach}
+      paintScope={paintScope}
+      onPaintScope={setPaintScope}
       onRandom={randomiseNail}
       onPaint={applyPaint}
       onRandomPaint={randomiseColor}
@@ -1115,10 +1190,15 @@ const Designer = ({
               {sideName(copy, side)}
               <span className="text-rose"> · </span>
               {fingerName(copy, editing.finger)}
-              {designAll && (
+              {designScope !== "nail" && (
                 <span className="font-normal text-white/70">
                   {" "}
-                  ({copy.design.allNails.toLocaleLowerCase(locale)})
+                  (
+                  {(designScope === "all" ?
+                    copy.design.allNails
+                  : copy.design.thisHand
+                  ).toLocaleLowerCase(locale)}
+                  )
                 </span>
               )}
             </p>
@@ -1334,6 +1414,33 @@ const Designer = ({
               {copy.toolbar.confirm}
             </button>
           </div>
+        </form>
+      </dialog>
+
+      <dialog
+        ref={promptReference}
+        aria-labelledby={promptTitleId}
+        className="m-auto w-[min(92vw,24rem)] rounded-3xl bg-pearl p-6 text-burgundy shadow-2xl backdrop:bg-burgundy-deep/70 backdrop:backdrop-blur-sm"
+      >
+        <h2 id={promptTitleId} className="font-serif text-2xl italic">
+          {copy.prompt.title}
+        </h2>
+        <p className="mt-3 text-sm leading-relaxed text-plum">
+          {copy.prompt.text}
+        </p>
+        <form method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">
+          <button
+            type="submit"
+            className={`${segment} border border-rose/60 text-burgundy hover:bg-rose/20`}
+          >
+            {copy.prompt.stay}
+          </button>
+          <a
+            href={`${localePagePath(locale, "home")}#kontakt`}
+            className={`${segment} bg-rose text-burgundy-deep hover:bg-rose-soft`}
+          >
+            {copy.prompt.book}
+          </a>
         </form>
       </dialog>
 

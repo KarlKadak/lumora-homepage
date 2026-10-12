@@ -12,7 +12,7 @@ import {
 // Open Graph locale codes for the share card; the images live in public/.
 const OG_LOCALE: Record<Locale, string> = { et: "et_EE", en: "en_GB" };
 
-// Estonian is the default for visitors whose language we do not serve.
+// Estonian is the default for visitors whose language the site does not serve.
 const DEFAULT_LOCALE: Locale = "et";
 
 const languageAlternates = (page: Page): Record<string, string> => {

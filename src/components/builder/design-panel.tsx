@@ -24,6 +24,7 @@ import type {
   Finger,
   NailElement,
   Paint,
+  Scope,
   Side,
   Target,
 } from "@/components/builder/state";
@@ -120,43 +121,54 @@ const Catalogue = memo(
 
 Catalogue.displayName = "Catalogue";
 
-// All nails | Only this nail, as a sliding two-way toggle.
+// How far an edit reaches: all ten nails, the edited hand's five, or the
+// one nail. A sliding three-way toggle.
+const SCOPES: readonly Scope[] = ["all", "hand", "nail"];
+
 const Toggle = ({
   value,
   copy,
   onChange,
 }: Readonly<{
-  value: boolean;
+  value: Scope;
   copy: DesignerCopy;
-  onChange: (all: boolean) => void;
-}>) => (
-  <div
-    role="group"
-    aria-label={copy.design.applyTo}
-    className="relative inline-grid grid-cols-2 rounded-full bg-white p-0.5"
-  >
-    <span
-      aria-hidden="true"
-      className={`absolute top-0.5 bottom-0.5 w-[calc(50%-0.125rem)] rounded-full bg-rose transition-[left] duration-300 ease-[cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:transition-none ${value ? "left-0.5" : "left-1/2"}`}
-    />
-    {[
-      { all: true, label: copy.design.allNails },
-      { all: false, label: copy.design.onlyThis },
-    ].map(({ all, label }) => (
-      <button
-        key={label}
-        type="button"
-        aria-pressed={value === all}
-        onClick={() => {
-          onChange(all);
+  onChange: (scope: Scope) => void;
+}>) => {
+  const labels: Record<Scope, string> = {
+    all: copy.design.allNails,
+    hand: copy.design.thisHand,
+    nail: copy.design.onlyThis,
+  };
+
+  return (
+    <div
+      role="group"
+      aria-label={copy.design.applyTo}
+      className="relative inline-grid grid-cols-3 rounded-full bg-white p-0.5"
+    >
+      <span
+        aria-hidden="true"
+        className="absolute top-0.5 bottom-0.5 left-0.5 w-[calc((100%-0.25rem)/3)] rounded-full bg-rose transition-transform duration-300 ease-[cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:transition-none"
+        style={{
+          transform: `translateX(${String(SCOPES.indexOf(value) * 100)}%)`,
         }}
-        className={`relative inline-flex min-h-9 cursor-pointer items-center justify-center rounded-full px-3 text-xs font-semibold whitespace-nowrap transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rose ${value === all ? "text-burgundy-deep" : "text-burgundy"}`}
-      >
-        {label}
-      </button>
-    ))}
-  </div>
-);
+      />
+      {SCOPES.map((scope) => (
+        <button
+          key={scope}
+          type="button"
+          aria-pressed={value === scope}
+          onClick={() => {
+            onChange(scope);
+          }}
+          className={`relative inline-flex min-h-9 cursor-pointer items-center justify-center rounded-full px-2.5 text-xs font-semibold whitespace-nowrap transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rose ${value === scope ? "text-burgundy-deep" : "text-burgundy"}`}
+        >
+          {labels[scope]}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 // The polish's name in the current language, for announcements.
 const paintName = (copy: DesignerCopy, paint: Paint) => {
@@ -216,16 +228,17 @@ interface DesignPanelProperties {
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onReorder: (id: string, by: 1 | -1) => void;
-  // Edits go to every nail while this is on; likewise for the polish.
-  designAll: boolean;
-  onDesignAll: (all: boolean) => void;
-  paintAll: boolean;
-  onPaintAll: (all: boolean) => void;
+  // How far edits reach: every nail, this hand's nails or this nail alone;
+  // likewise for the polish.
+  designScope: Scope;
+  onDesignScope: (scope: Scope) => void;
+  paintScope: Scope;
+  onPaintScope: (scope: Scope) => void;
   // Replaces this nail's decoration with a random design.
   onRandom: () => void;
-  // Paints this nail, or every nail when `all` is set.
-  onPaint: (paint: Paint, name: string, all: boolean) => void;
-  onRandomPaint: (all: boolean) => void;
+  // Paints this nail, this hand or every nail, as `scope` says.
+  onPaint: (paint: Paint, name: string, scope: Scope) => void;
+  onRandomPaint: (scope: Scope) => void;
   onDone: () => void;
 }
 
@@ -243,10 +256,10 @@ const DesignPanel = ({
   onDelete,
   onDuplicate,
   onReorder,
-  designAll,
-  onDesignAll,
-  paintAll,
-  onPaintAll,
+  designScope,
+  onDesignScope,
+  paintScope,
+  onPaintScope,
   onRandom,
   onPaint,
   onRandomPaint,
@@ -278,7 +291,7 @@ const DesignPanel = ({
   // The phone's popups name the section in their header.
   const inPopup = part !== undefined;
   const randomPaint = () => {
-    onRandomPaint(paintAll);
+    onRandomPaint(paintScope);
   };
 
   if (!design) return undefined;
@@ -288,12 +301,12 @@ const DesignPanel = ({
       {shows("color") && (
         <div className="flex items-center justify-between gap-2">
           <Toggle
-            value={paintAll}
+            value={paintScope}
             copy={copy}
-            onChange={(all) => {
-              onPaintAll(all);
-              if (all)
-                onPaint(design.paint, paintName(copy, design.paint), true);
+            onChange={(scope) => {
+              onPaintScope(scope);
+              if (scope !== "nail")
+                onPaint(design.paint, paintName(copy, design.paint), scope);
             }}
           />
           {inPopup && (
@@ -326,7 +339,7 @@ const DesignPanel = ({
               copy={copy}
               prefix={defs}
               onChange={(paint, name) => {
-                onPaint(paint, name, paintAll);
+                onPaint(paint, name, paintScope);
               }}
             />
           </div>
@@ -335,7 +348,7 @@ const DesignPanel = ({
 
       {shows("add") && (
         <div className="flex items-center justify-between gap-2">
-          <Toggle value={designAll} copy={copy} onChange={onDesignAll} />
+          <Toggle value={designScope} copy={copy} onChange={onDesignScope} />
           {inPopup && (
             <ShuffleChip
               label={copy.toolbar.random}

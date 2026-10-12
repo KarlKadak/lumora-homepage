@@ -60,6 +60,10 @@ interface DesignerState {
   left: HandState | undefined;
 }
 
+// How far an edit reaches from the edited nail: all ten nails, the five of
+// its hand, or that nail alone.
+type Scope = "all" | "hand" | "nail";
+
 interface Target {
   side: Side;
   finger: Finger;
@@ -597,6 +601,7 @@ export type {
   NailDesign,
   NailElement,
   Paint,
+  Scope,
   Side,
   Target,
 };

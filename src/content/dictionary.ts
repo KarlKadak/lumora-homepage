@@ -32,6 +32,9 @@ interface Picker {
   close: string;
   newLabel: string;
   names: Record<string, string>;
+  // The invitation under the swatches to go further in the designer.
+  designerNote: string;
+  designerLink: string;
 }
 
 // Copy for the nail designer page.
@@ -103,6 +106,7 @@ interface DesignerCopy {
     back: string;
     delete: string;
     allNails: string;
+    thisHand: string;
     onlyThis: string;
     applyTo: string;
     done: string;
@@ -126,6 +130,8 @@ interface DesignerCopy {
   };
   nailButton: string;
   live: { length: string; shape: string; sharpness: string };
+  // The nudge towards booking, shown once the visitor has designed a while.
+  prompt: { title: string; text: string; book: string; stay: string };
   // The written guide under the designer. The designer itself renders only in
   // the browser, so this is the page's readable content for crawlers and for
   // anyone who wants to know what the tool does before using it.
@@ -246,7 +252,7 @@ const et: Dictionary = {
     titleStart: "Uus küünesalong",
     titleAccent: "Tallinnas",
     titleEnd: "avab peagi uksed.",
-    lead: "Maniküür, geellakk, küünepikendused ja küünekunst. Avamise kuupäeva anname teada Instagramis.",
+    lead: "Maniküür, geellakk, küünepikendused ja küünekunst. Avamise kuupäeva annan teada Instagramis.",
     primary: "Võta ühendust",
     secondary: "Jälgi Instagramis",
     designer: "Kujunda oma küüned",
@@ -259,6 +265,8 @@ const et: Dictionary = {
       classic: "Klassika",
       close: "Sulge",
       newLabel: "Uus",
+      designerNote: "Tahad pikkust, kuju ja kaunistusi ise valida?",
+      designerLink: "Kujunda oma küüned kujundajas",
       names: {
         halloween: "Halloween",
         "halloween-night": "Halloweeni öö",
@@ -306,7 +314,7 @@ const et: Dictionary = {
     eyebrow: "Küünekujundaja",
     titleStart: "Kujunda oma küüned",
     titleAccent: "juba enne külastust.",
-    text: "Meie kujundajas paned paari minutiga kokku täpselt sellise komplekti, nagu soovid. Nii tead sa ise, mida tahad, ja meie teame, mida teha.",
+    text: "Kujundajas paned paari minutiga kokku täpselt sellise komplekti, nagu soovid. Nii tead sa ise, mida tahad, ja mina tean, mida teha.",
     steps: [
       {
         title: "Pikkus ja kuju",
@@ -332,17 +340,17 @@ const et: Dictionary = {
   time: {
     eyebrow: "Sinu aeg",
     title: "Aeg on sinu päralt.",
-    text: "Kuni meie sinu küüntega tegeleme, võid aega veeta just nii, nagu soovid.",
+    text: "Kuni ma sinu küüntega tegelen, võid aega veeta just nii, nagu soovid.",
     items: [
       {
         kind: "netflix",
         title: "Meelelahutus",
-        text: "Meil on valik meelelahutust. Näiteks saad Netflixis oma lemmiksarja edasi vaadata.",
+        text: "Salongis on valik meelelahutust. Näiteks saad Netflixis oma lemmiksarja edasi vaadata.",
       },
       {
         kind: "calm",
         title: "Vaikus või vestlus",
-        text: "Kui soovid, joo tass teed ja naudi vaikust. Kui tahad juttu ajada, ajame juttu.",
+        text: "Kui soovid, joo tass teed ja naudi vaikust. Kui tahad juttu ajada, ajan hea meelega juttu.",
       },
       {
         kind: "parking",
@@ -363,44 +371,45 @@ const et: Dictionary = {
     title: "Küsimused enne avamist",
     items: [
       {
-        question: "Millal te avate?",
+        question: "Millal salong avatakse?",
         answer:
-          "Avame peagi Tallinnas. Avamise kuupäeva anname esmalt teada Instagramis.",
+          "Salong avab peagi Tallinnas. Avamise kuupäeva annan esmalt teada Instagramis.",
       },
       {
         question: "Kuidas saan aja broneerida?",
         answer:
-          "Kirjuta meile e-kiri. Võtame sinuga ühendust kohe, kui broneerimine avaneb.",
+          "Kirjuta mulle e-kiri. Võtan sinuga ühendust kohe, kui broneerimine avaneb.",
       },
       {
-        question: "Milliseid teenuseid pakute?",
+        question: "Milliseid teenuseid salong pakub?",
         answer:
           "Maniküüri, geellakki, küünepikendusi, BIAB tugevdust ja küünekunsti.",
       },
       {
-        question: "Milliseid tooteid kasutate?",
+        question: "Milliseid tooteid salongis kasutatakse?",
         answer:
-          "Vegan- ja HEMA-vabu tooteid ning töötame alati steriliseeritud instrumentidega.",
+          "Vegan- ja HEMA-vabu tooteid ning alati steriliseeritud instrumente.",
       },
       {
         question: "Kas saan oma kujunduse ette valmis mõelda?",
         answer:
-          "Jah. Meie küünekujundajas valid pikkuse, kuju, värvi ja kaunistused, laadid pildi alla ja võtad selle külastusele kaasa.",
+          "Jah. Küünekujundajas valid pikkuse, kuju, värvi ja kaunistused, laadid pildi alla ja võtad selle külastusele kaasa.",
         link: { label: "Ava küünekujundaja", page: "designer" },
       },
     ],
   },
   visit: {
-    eyebrow: "Leia meid",
-    titleStart: "Avame uksed",
+    eyebrow: "Leia salong",
+    titleStart: "Uksed avanevad",
     titleAccent: "Tallinnas.",
     addressLabel: "Asukoht",
     address: ["Tallinn", "Täpne aadress selgub peagi"],
     openingLabel: "Avamine",
-    opening: "Avame peagi. Jälgi Instagrami, siis kuuled sellest esimesena.",
+    opening:
+      "Avamine on peagi. Jälgi Instagrami, siis kuuled sellest esimesena.",
     contactLabel: "Kontakt",
     email: EMAIL,
-    cta: "Kirjuta meile",
+    cta: "Kirjuta mulle",
     mapTitle: "Lumora Nail Lounge asukoht kaardil",
   },
   footer: {
@@ -515,6 +524,7 @@ const et: Dictionary = {
       back: "Tahapoole",
       delete: "Kustuta",
       allNails: "Kõik küüned",
+      thisHand: "See käsi",
       onlyThis: "Ainult see küüs",
       applyTo: "Rakenda",
       done: "Valmis",
@@ -592,12 +602,18 @@ const et: Dictionary = {
       shape: "Kuju {value}, {name}",
       sharpness: "Teravus {value}, {name}",
     },
+    prompt: {
+      title: "Kas küüned on valmis?",
+      text: "Broneeri aeg ja see kujundus saab salongis teoks. Kujundus jääb sinu brauserisse alles, nii et võid ka edasi kujundada.",
+      book: "Broneeri aeg",
+      stay: "Kujunda edasi",
+    },
     guide: {
       eyebrow: "Kuidas kujundaja töötab",
       title: "Sinu küüned, sinu reeglid",
       text: [
         "Küünekujundaja on Lumora Nail Lounge'i tasuta tööriist, millega paned enne salongikülastust kokku oma unistuste küünekomplekti. Kontot pole vaja ja midagi ei tule alla laadida: kõik töötab otse brauseris, nii arvutis kui ka telefonis.",
-        "Kujundus salvestub automaatselt sinu seadmesse, nii et võid alati hiljem jätkata. Valmis pildi laadid alla või jagad lingiga ja võtad selle külastusele kaasa. Nii tead sina, mida soovid, ja meie teame, mida teha.",
+        "Kujundus salvestub automaatselt sinu seadmesse, nii et võid alati hiljem jätkata. Valmis pildi laadid alla või jagad lingiga ja võtad selle külastusele kaasa. Nii tead sina, mida soovid, ja mina tean, mida teha.",
       ],
       steps: [
         {
@@ -614,7 +630,7 @@ const et: Dictionary = {
         },
         {
           title: "Laadi alla või jaga",
-          text: "Salvesta kujundus pildina või kopeeri link, mis avab täpselt sama kujunduse igas seadmes. Näita seda meile salongis ja asume tööle.",
+          text: "Salvesta kujundus pildina või kopeeri link, mis avab täpselt sama kujunduse igas seadmes. Näita seda salongis ja töö võib alata.",
         },
       ],
       faqTitle: "Küsimused kujundaja kohta",
@@ -632,7 +648,7 @@ const et: Dictionary = {
         {
           question: "Kas salongis tehakse täpselt selline kujundus?",
           answer:
-            "Pilt on meile hea lähtepunkt. Salongis vaatame koos üle, kuidas valitud pikkus, kuju ja kaunistused sinu küüntele sobivad, ning vajadusel kohandame.",
+            "Pilt on hea lähtepunkt. Salongis vaatan koos sinuga üle, kuidas valitud pikkus, kuju ja kaunistused sinu küüntele sobivad, ning vajadusel kohandan.",
         },
         {
           question: "Kas saan kujunduse sõbrale saata?",
@@ -640,9 +656,9 @@ const et: Dictionary = {
             "Jah. Jagamisnupp kopeerib lingi, mis avab sama kujunduse igas seadmes. Alla laaditud pildi võid saata ka otse sõnumiga.",
         },
       ],
-      cta: "Võta meiega ühendust",
+      cta: "Võta ühendust",
       ctaNote:
-        "Avame peagi Tallinnas. Kirjuta meile ja anname teada, kui broneerimine avaneb.",
+        "Salong avab peagi Tallinnas. Kirjuta mulle ja annan teada, kui broneerimine avaneb.",
     },
   },
 };
@@ -651,7 +667,7 @@ const en: Dictionary = {
   meta: {
     title: "Lumora Nail Lounge | Nail salon in Tallinn",
     description:
-      "A new nail salon opening soon in Tallinn. Manicures, gel polish, extensions, BIAB overlays and nail art. Follow us on Instagram for opening news.",
+      "A new nail salon opening soon in Tallinn. Manicures, gel polish, extensions, BIAB overlays and nail art. Follow the salon on Instagram for opening news.",
     ogAlt: "Lumora Nail Lounge – a new nail salon opening soon in Tallinn",
   },
   nav: {
@@ -668,7 +684,7 @@ const en: Dictionary = {
     titleStart: "A new nail salon",
     titleAccent: "in Tallinn",
     titleEnd: "opening soon.",
-    lead: "Manicures, gel polish, extensions and nail art. We will announce the opening date on Instagram.",
+    lead: "Manicures, gel polish, extensions and nail art. The opening date will be announced on Instagram.",
     primary: "Get in touch",
     secondary: "Follow on Instagram",
     designer: "Design your nails",
@@ -681,6 +697,8 @@ const en: Dictionary = {
       classic: "Classic",
       close: "Close",
       newLabel: "New",
+      designerNote: "Want to pick the length, shape and decoration too?",
+      designerLink: "Design your own nails in the designer",
       names: {
         halloween: "Halloween",
         "halloween-night": "Halloween night",
@@ -728,7 +746,7 @@ const en: Dictionary = {
     eyebrow: "Nail designer",
     titleStart: "Design your nails",
     titleAccent: "before you visit.",
-    text: "Our designer lets you put together exactly the set you want in a couple of minutes. You know what you are after, and we know what to do.",
+    text: "The designer lets you put together exactly the set you want in a couple of minutes. You know what you are after, and I know what to do.",
     steps: [
       {
         title: "Length and shape",
@@ -754,17 +772,17 @@ const en: Dictionary = {
   time: {
     eyebrow: "Your time",
     title: "The time is yours.",
-    text: "While we work on your nails, you can spend the time however you like.",
+    text: "While I work on your nails, you can spend the time however you like.",
     items: [
       {
         kind: "netflix",
         title: "Entertainment",
-        text: "We have a selection of entertainment. You can, for example, carry on with your favourite series on Netflix.",
+        text: "There is a selection of entertainment. You can, for example, carry on with your favourite series on Netflix.",
       },
       {
         kind: "calm",
         title: "Quiet or conversation",
-        text: "If you like, have a cup of tea and enjoy the quiet. If you feel like talking, we are happy to chat.",
+        text: "If you like, have a cup of tea and enjoy the quiet. If you feel like talking, I am happy to chat.",
       },
       {
         kind: "parking",
@@ -776,23 +794,23 @@ const en: Dictionary = {
   instagram: {
     eyebrow: "Instagram",
     title: "A peek behind the scenes.",
-    text: "We post new designs, photos of the salon coming together and opening news on Instagram.",
+    text: "New designs, photos of the salon coming together and opening news are posted on Instagram.",
     follow: `Follow @${INSTAGRAM_HANDLE}`,
     embedTitle: "Lumora Nail Lounge Instagram feed",
   },
   faq: {
     eyebrow: "FAQ",
-    title: "Questions before we open",
+    title: "Questions before the opening",
     items: [
       {
         question: "When do you open?",
         answer:
-          "We are opening soon in Tallinn. The opening date will be announced on Instagram first.",
+          "The salon is opening soon in Tallinn. The opening date will be announced on Instagram first.",
       },
       {
         question: "How can I book an appointment?",
         answer:
-          "Send us an email. We will get back to you as soon as bookings open.",
+          "Send me an email. I will get back to you as soon as bookings open.",
       },
       {
         question: "Which services do you offer?",
@@ -801,28 +819,28 @@ const en: Dictionary = {
       },
       {
         question: "Which products do you use?",
-        answer:
-          "Vegan and HEMA-free products, and we always work with sterilised tools.",
+        answer: "Vegan and HEMA-free products, and always sterilised tools.",
       },
       {
         question: "Can I plan my design in advance?",
         answer:
-          "Yes. In our nail designer you pick the length, shape, colour and decoration, download the picture and bring it to your appointment.",
+          "Yes. In the nail designer you pick the length, shape, colour and decoration, download the picture and bring it to your appointment.",
         link: { label: "Open the nail designer", page: "designer" },
       },
     ],
   },
   visit: {
-    eyebrow: "Find us",
-    titleStart: "Opening our doors",
+    eyebrow: "Find the salon",
+    titleStart: "Opening the doors",
     titleAccent: "in Tallinn.",
     addressLabel: "Location",
     address: ["Tallinn", "Exact address coming soon"],
     openingLabel: "Opening",
-    opening: "Opening soon. Follow us on Instagram to hear about it first.",
+    opening:
+      "Opening soon. Follow the salon on Instagram to hear about it first.",
     contactLabel: "Contact",
     email: EMAIL,
-    cta: "Email us",
+    cta: "Email me",
     mapTitle: "Map showing the location of Lumora Nail Lounge",
   },
   footer: {
@@ -937,6 +955,7 @@ const en: Dictionary = {
       back: "Send back",
       delete: "Delete",
       allNails: "All nails",
+      thisHand: "This hand",
       onlyThis: "Only this nail",
       applyTo: "Apply to",
       done: "Done",
@@ -1015,12 +1034,18 @@ const en: Dictionary = {
       shape: "Shape {value}, {name}",
       sharpness: "Sharpness {value}, {name}",
     },
+    prompt: {
+      title: "Happy with your nails?",
+      text: "Book an appointment and this design becomes a reality at the salon. It stays saved in your browser, so you can also keep designing.",
+      book: "Book an appointment",
+      stay: "Keep designing",
+    },
     guide: {
       eyebrow: "How the designer works",
       title: "Your nails, your rules",
       text: [
         "The nail designer is a free tool from Lumora Nail Lounge for putting together the nail set of your dreams before your salon visit. No account and nothing to install: everything runs in the browser, on your computer or your phone.",
-        "Your design is saved on your device automatically, so you can always come back to it later. Download the finished picture or share it as a link and bring it to your appointment. You know what you are after, and we know what to do.",
+        "Your design is saved on your device automatically, so you can always come back to it later. Download the finished picture or share it as a link and bring it to your appointment. You know what you are after, and I know what to do.",
       ],
       steps: [
         {
@@ -1037,7 +1062,7 @@ const en: Dictionary = {
         },
         {
           title: "Download or share",
-          text: "Save the design as a picture or copy a link that opens the exact same design on any device. Show it to us at the salon and we get to work.",
+          text: "Save the design as a picture or copy a link that opens the exact same design on any device. Show it at the salon and the work can begin.",
         },
       ],
       faqTitle: "Questions about the designer",
@@ -1055,7 +1080,7 @@ const en: Dictionary = {
         {
           question: "Will the salon make exactly this design?",
           answer:
-            "The picture is a great starting point for us. At the salon we look together at how the chosen length, shape and decoration suit your nails, and adjust where needed.",
+            "The picture is a great starting point. At the salon I look together with you at how the chosen length, shape and decoration suit your nails, and adjust where needed.",
         },
         {
           question: "Can I send the design to a friend?",
@@ -1065,7 +1090,7 @@ const en: Dictionary = {
       ],
       cta: "Get in touch",
       ctaNote:
-        "We are opening soon in Tallinn. Send us an email and we will let you know when bookings open.",
+        "The salon is opening soon in Tallinn. Send me an email and I will let you know when bookings open.",
     },
   },
 };

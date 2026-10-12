@@ -794,11 +794,13 @@ const CycleTile = ({
 
 const PickerDialog = ({
   picker,
+  designerHref,
   dialogRef,
   onPick,
   onCycle,
 }: Readonly<{
   picker: Picker;
+  designerHref: string;
   dialogRef: React.RefObject<HTMLDialogElement | null>;
   onPick: (finish: Finish) => void;
   onCycle: (cycle: Cycle) => void;
@@ -877,6 +879,17 @@ const PickerDialog = ({
           </li>
         ))}
       </ul>
+      {/* The bottle paints one shade; the designer does the rest. A plain
+          link, so the dialog closes with the page it belongs to. */}
+      <p className="mt-6 border-t border-rose/40 pt-4 text-sm text-plum">
+        {picker.designerNote}{" "}
+        <a
+          href={designerHref}
+          className="font-semibold text-burgundy underline decoration-rose decoration-2 underline-offset-4 transition-colors hover:text-rose focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose"
+        >
+          {picker.designerLink}
+        </a>
+      </p>
     </dialog>
   );
 };
@@ -885,7 +898,8 @@ const PickerDialog = ({
 const HeroScene = ({
   className,
   picker,
-}: Readonly<{ className?: string; picker: Picker }>) => {
+  designerHref,
+}: Readonly<{ className?: string; picker: Picker; designerHref: string }>) => {
   const sceneControl = useRef<SceneControl | undefined>(undefined);
   const dialogReference = useRef<HTMLDialogElement>(null);
   const tipId = useId();
@@ -933,6 +947,7 @@ const HeroScene = ({
       </div>
       <PickerDialog
         picker={picker}
+        designerHref={designerHref}
         dialogRef={dialogReference}
         onPick={(finish) => sceneControl.current?.pick(finish)}
         onCycle={(cycle) => sceneControl.current?.cycle(cycle)}

@@ -61,8 +61,10 @@ body {
 /* Every animated element's resting state is its final state, so with the
    animations removed (reduced motion) the page is simply fully painted. */
 
+/* The curtain is visible from the first frame until the lift ends, and a
+   visible element catches the clicks and taps meant for the page under it.
+   Once lifted it is hidden, and a hidden element lets them through. */
 .intro-overlay {
-  pointer-events: none;
   visibility: hidden;
   animation: intro-lift 0.75s cubic-bezier(0.7, 0, 0.2, 1) 2.1s both;
 }
