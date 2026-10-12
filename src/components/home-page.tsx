@@ -371,7 +371,10 @@ const Instagram = ({
   </section>
 );
 
-const Faq = ({ faq }: Readonly<{ faq: Dictionary["faq"] }>) => (
+const Faq = ({
+  faq,
+  locale,
+}: Readonly<{ faq: Dictionary["faq"]; locale: Locale }>) => (
   <section id="kkk" className="scroll-mt-16 py-20 md:py-28">
     <div className="mx-auto max-w-6xl px-4 sm:px-8 lg:grid lg:grid-cols-[1fr_1.5fr] lg:gap-16">
       <div className="reveal lg:sticky lg:top-28 lg:self-start">
@@ -379,7 +382,7 @@ const Faq = ({ faq }: Readonly<{ faq: Dictionary["faq"] }>) => (
         <h2 className={`mt-4 ${sectionTitle} text-ink`}>{faq.title}</h2>
       </div>
       <div className="mt-10 lg:mt-0">
-        <Accordion items={faq.items} />
+        <Accordion items={faq.items} locale={locale} />
       </div>
     </div>
   </section>
@@ -480,10 +483,10 @@ const HomePage = ({ locale }: Readonly<{ locale: Locale }>) => {
         <Time time={dictionary.time} />
         <Promo promo={dictionary.promo} locale={locale} />
         <Instagram instagram={dictionary.instagram} />
-        <Faq faq={dictionary.faq} />
+        <Faq faq={dictionary.faq} locale={locale} />
         <Visit visit={dictionary.visit} />
       </main>
-      <Footer footer={dictionary.footer} />
+      <Footer footer={dictionary.footer} locale={locale} page="home" />
     </>
   );
 };

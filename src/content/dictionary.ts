@@ -11,6 +11,14 @@ interface Perk {
 interface Question {
   question: string;
   answer: string;
+  // An optional way onward from the answer, rendered as a link after it.
+  link?: { label: string; page: Page };
+}
+
+// A numbered step in a short how-to.
+interface Step {
+  title: string;
+  text: string;
 }
 
 // The colour picker behind the hero's polish bottle. Finish names are keyed
@@ -118,6 +126,19 @@ interface DesignerCopy {
   };
   nailButton: string;
   live: { length: string; shape: string; sharpness: string };
+  // The written guide under the designer. The designer itself renders only in
+  // the browser, so this is the page's readable content for crawlers and for
+  // anyone who wants to know what the tool does before using it.
+  guide: {
+    eyebrow: string;
+    title: string;
+    text: string[];
+    steps: Step[];
+    faqTitle: string;
+    faq: Question[];
+    cta: string;
+    ctaNote: string;
+  };
 }
 
 type FingerName = "thumb" | "index" | "middle" | "ring" | "pinky";
@@ -164,7 +185,7 @@ interface Dictionary {
     titleStart: string;
     titleAccent: string;
     text: string;
-    steps: { title: string; text: string }[];
+    steps: Step[];
     cta: string;
     note: string;
     // Finish names from the catalogue in nail-finishes.tsx, shown as a row of
@@ -193,7 +214,8 @@ interface Dictionary {
     cta: string;
     mapTitle: string;
   };
-  footer: { tagline: string; rights: string };
+  // The footer links to the home page and the designer from every page.
+  footer: { tagline: string; rights: string; home: string; designer: string };
   designer: DesignerCopy;
 }
 
@@ -364,6 +386,7 @@ const et: Dictionary = {
         question: "Kas saan oma kujunduse ette valmis mõelda?",
         answer:
           "Jah. Meie küünekujundajas valid pikkuse, kuju, värvi ja kaunistused, laadid pildi alla ja võtad selle külastusele kaasa.",
+        link: { label: "Ava küünekujundaja", page: "designer" },
       },
     ],
   },
@@ -383,6 +406,8 @@ const et: Dictionary = {
   footer: {
     tagline: "Küünesalong Tallinnas.",
     rights: "Kõik õigused kaitstud.",
+    home: "Avaleht",
+    designer: "Küünekujundaja",
   },
   designer: {
     meta: {
@@ -567,6 +592,58 @@ const et: Dictionary = {
       shape: "Kuju {value}, {name}",
       sharpness: "Teravus {value}, {name}",
     },
+    guide: {
+      eyebrow: "Kuidas kujundaja töötab",
+      title: "Sinu küüned, sinu reeglid",
+      text: [
+        "Küünekujundaja on Lumora Nail Lounge'i tasuta tööriist, millega paned enne salongikülastust kokku oma unistuste küünekomplekti. Kontot pole vaja ja midagi ei tule alla laadida: kõik töötab otse brauseris, nii arvutis kui ka telefonis.",
+        "Kujundus salvestub automaatselt sinu seadmesse, nii et võid alati hiljem jätkata. Valmis pildi laadid alla või jagad lingiga ja võtad selle külastusele kaasa. Nii tead sina, mida soovid, ja meie teame, mida teha.",
+      ],
+      steps: [
+        {
+          title: "Vali pikkus ja kuju",
+          text: "Viis pikkust ja üheksa kuju: mandel, stiletto, kirst, ovaal, kandiline, ümar, squoval ning stiletto ja kirstu pehmemad variandid. Pikkust, kuju ja teravust saad liuguritega peenhäälestada.",
+        },
+        {
+          title: "Vali värv ja viimistlus",
+          text: "Kümned lakitoonid õrnast roosist sügava burgundiani ning eriefektid: kroom, holo, kassisilm, ombré, prantsuse maniküür ja marmor. Oma tooni saad valida ka värvivalijast.",
+        },
+        {
+          title: "Lisa mustrid ja kivikesed",
+          text: "Igale küünele eraldi mustrid, illustratsioonid ja kivikesed. Elemente saad suurendada, pöörata, nihutada ja ühe liigutusega kõigile küüntele kopeerida.",
+        },
+        {
+          title: "Laadi alla või jaga",
+          text: "Salvesta kujundus pildina või kopeeri link, mis avab täpselt sama kujunduse igas seadmes. Näita seda meile salongis ja asume tööle.",
+        },
+      ],
+      faqTitle: "Küsimused kujundaja kohta",
+      faq: [
+        {
+          question: "Kas kujundaja on tasuta?",
+          answer:
+            "Jah. Kujundaja on täiesti tasuta ega vaja kontot ega rakenduse paigaldamist. See töötab igas uuemas brauseris, nii arvutis kui ka telefonis.",
+        },
+        {
+          question: "Kas minu kujundus salvestub?",
+          answer:
+            "Jah. Kujundus salvestub automaatselt sinu brauserisse, nii et saad hiljem samast kohast jätkata. Teise seadmesse viimiseks kopeeri jagamislink.",
+        },
+        {
+          question: "Kas salongis tehakse täpselt selline kujundus?",
+          answer:
+            "Pilt on meile hea lähtepunkt. Salongis vaatame koos üle, kuidas valitud pikkus, kuju ja kaunistused sinu küüntele sobivad, ning vajadusel kohandame.",
+        },
+        {
+          question: "Kas saan kujunduse sõbrale saata?",
+          answer:
+            "Jah. Jagamisnupp kopeerib lingi, mis avab sama kujunduse igas seadmes. Alla laaditud pildi võid saata ka otse sõnumiga.",
+        },
+      ],
+      cta: "Võta meiega ühendust",
+      ctaNote:
+        "Avame peagi Tallinnas. Kirjuta meile ja anname teada, kui broneerimine avaneb.",
+    },
   },
 };
 
@@ -731,6 +808,7 @@ const en: Dictionary = {
         question: "Can I plan my design in advance?",
         answer:
           "Yes. In our nail designer you pick the length, shape, colour and decoration, download the picture and bring it to your appointment.",
+        link: { label: "Open the nail designer", page: "designer" },
       },
     ],
   },
@@ -750,6 +828,8 @@ const en: Dictionary = {
   footer: {
     tagline: "Nail lounge in Tallinn.",
     rights: "All rights reserved.",
+    home: "Home",
+    designer: "Nail designer",
   },
   designer: {
     meta: {
@@ -934,6 +1014,58 @@ const en: Dictionary = {
       length: "Length {value}",
       shape: "Shape {value}, {name}",
       sharpness: "Sharpness {value}, {name}",
+    },
+    guide: {
+      eyebrow: "How the designer works",
+      title: "Your nails, your rules",
+      text: [
+        "The nail designer is a free tool from Lumora Nail Lounge for putting together the nail set of your dreams before your salon visit. No account and nothing to install: everything runs in the browser, on your computer or your phone.",
+        "Your design is saved on your device automatically, so you can always come back to it later. Download the finished picture or share it as a link and bring it to your appointment. You know what you are after, and we know what to do.",
+      ],
+      steps: [
+        {
+          title: "Pick a length and shape",
+          text: "Five lengths and nine shapes: almond, stiletto, coffin, oval, square, round, squoval and softer takes on stiletto and coffin. Fine-tune the length, shape and sharpness with sliders.",
+        },
+        {
+          title: "Pick a colour and finish",
+          text: "Dozens of polish shades from soft rose to deep burgundy, plus special finishes: chrome, holo, cat eye, ombré, French tips and marble. You can also pick your own shade from the colour picker.",
+        },
+        {
+          title: "Add patterns and stones",
+          text: "Patterns, illustrations and stones on each nail individually. Resize, rotate and move elements, and copy them to every nail in one go.",
+        },
+        {
+          title: "Download or share",
+          text: "Save the design as a picture or copy a link that opens the exact same design on any device. Show it to us at the salon and we get to work.",
+        },
+      ],
+      faqTitle: "Questions about the designer",
+      faq: [
+        {
+          question: "Is the designer free?",
+          answer:
+            "Yes. The designer is completely free and needs no account or app. It works in any modern browser, on a computer or a phone.",
+        },
+        {
+          question: "Is my design saved?",
+          answer:
+            "Yes. The design is saved in your browser automatically, so you can pick up where you left off later. To move it to another device, copy the share link.",
+        },
+        {
+          question: "Will the salon make exactly this design?",
+          answer:
+            "The picture is a great starting point for us. At the salon we look together at how the chosen length, shape and decoration suit your nails, and adjust where needed.",
+        },
+        {
+          question: "Can I send the design to a friend?",
+          answer:
+            "Yes. The share button copies a link that opens the same design on any device. You can also send the downloaded picture directly in a message.",
+        },
+      ],
+      cta: "Get in touch",
+      ctaNote:
+        "We are opening soon in Tallinn. Send us an email and we will let you know when bookings open.",
     },
   },
 };

@@ -30,6 +30,7 @@ const RootDocument = ({
   <html
     lang={locale}
     className={`${cormorant.variable} ${manrope.variable} h-full antialiased`}
+    data-scroll-behavior="smooth"
     suppressHydrationWarning
   >
     <body className="flex min-h-full flex-col font-sans">

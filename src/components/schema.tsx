@@ -1,4 +1,4 @@
-import type { Dictionary, Locale } from "@/content/dictionary";
+import type { Dictionary, Locale, Question } from "@/content/dictionary";
 import {
   EMAIL,
   INSTAGRAM_URL,
@@ -81,4 +81,19 @@ const DesignerSchema = ({
   />
 );
 
-export { DesignerSchema, LocalBusinessSchema };
+// The designer page's questions and answers, so search results can show them.
+const FaqSchema = ({ items }: Readonly<{ items: Question[] }>) => (
+  <JsonLd
+    data={{
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: items.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: { "@type": "Answer", text: item.answer },
+      })),
+    }}
+  />
+);
+
+export { DesignerSchema, FaqSchema, LocalBusinessSchema };

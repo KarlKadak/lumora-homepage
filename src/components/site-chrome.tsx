@@ -204,16 +204,53 @@ const Header = ({
   );
 };
 
+// The footer links to the site's pages, with the current one marked.
+const FooterLinks = ({
+  footer,
+  locale,
+  page,
+}: Readonly<{ footer: Dictionary["footer"]; locale: Locale; page: Page }>) => {
+  const pages: { page: Page; label: string }[] = [
+    { page: "home", label: footer.home },
+    { page: "designer", label: footer.designer },
+  ];
+
+  return (
+    <nav aria-label={footer.home} className="flex flex-wrap gap-x-5 gap-y-1">
+      {pages.map((entry) => (
+        <Link
+          key={entry.page}
+          href={localePagePath(locale, entry.page)}
+          aria-current={entry.page === page ? "page" : undefined}
+          className={`transition-colors hover:text-rose ${entry.page === page ? "text-white/90" : ""}`}
+        >
+          {entry.label}
+        </Link>
+      ))}
+    </nav>
+  );
+};
+
 const Footer = ({
   footer,
+  locale,
+  page,
   compact = false,
-}: Readonly<{ footer: Dictionary["footer"]; compact?: boolean }>) => (
+}: Readonly<{
+  footer: Dictionary["footer"];
+  locale: Locale;
+  page: Page;
+  compact?: boolean;
+}>) => (
   <footer
     className={`overflow-hidden bg-burgundy-deep text-white/60 ${compact ? "py-8" : "pt-16 md:pt-20"}`}
   >
     <div className="mx-auto max-w-6xl px-4 sm:px-8">
       <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-end sm:justify-between">
-        <p>{footer.tagline}</p>
+        <div className="flex flex-col gap-2">
+          <p>{footer.tagline}</p>
+          <FooterLinks footer={footer} locale={locale} page={page} />
+        </div>
         <a
           href={INSTAGRAM_URL}
           target="_blank"

@@ -1,11 +1,17 @@
 "use client";
 
 import { useId, useState } from "react";
-import type { Question } from "@/content/dictionary";
+import Link from "next/link";
+import type { Locale, Question } from "@/content/dictionary";
+import { localePagePath } from "@/content/dictionary";
 
 // Panels stay in the DOM and animate grid rows between 0fr and 1fr, so both
 // opening and closing glide in every modern browser. One panel open at a time.
-const Accordion = ({ items }: Readonly<{ items: Question[] }>) => {
+// The locale resolves the page a question's answer may link on to.
+const Accordion = ({
+  items,
+  locale,
+}: Readonly<{ items: Question[]; locale: Locale }>) => {
   const [openIndex, setOpenIndex] = useState<number | undefined>(0);
   const baseId = useId();
 
@@ -51,9 +57,17 @@ const Accordion = ({ items }: Readonly<{ items: Question[] }>) => {
               className={`grid transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:transition-none ${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
             >
               <div className="overflow-hidden">
-                <p className="border-t border-rose/30 pt-4 pb-6 leading-relaxed text-plum">
-                  {item.answer}
-                </p>
+                <div className="border-t border-rose/30 pt-4 pb-6 leading-relaxed text-plum">
+                  <p>{item.answer}</p>
+                  {item.link && (
+                    <Link
+                      href={localePagePath(locale, item.link.page)}
+                      className="mt-3 inline-block font-semibold text-burgundy underline decoration-rose/50 underline-offset-4 transition-colors hover:text-rose hover:decoration-rose"
+                    >
+                      {item.link.label} →
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
           </div>
